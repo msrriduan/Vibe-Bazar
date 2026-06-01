@@ -1,0 +1,141 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 1. Global safety net - Default deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // 2. Global validation helpers (Phase 3 Primitives)
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-\\.]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    // To prevent token claims reliance, check whether auth email exists in the /admins/ collection or matches the bootstrapped email.
+    function isAdmin() {
+      return isVerified() && (
+        request.auth.token.email == 'motiur3271@gmail.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.token.email))
+      );
+    }
+
+    // 3. Collection Rules
+
+    // ----- PRODUCTS COLLECTION -----
+    function isValidProduct(data) {
+      return isValidId(data.id) &&
+        data.name is string && data.name.size() > 0 && data.name.size() <= 150 &&
+        data.category is string && data.category.size() > 0 && data.category.size() <= 100 &&
+        data.price is number && data.price >= 0 && data.price <= 1000000 &&
+        data.stock is number && data.stock >= 0 && data.stock <= 100000 &&
+        data.images is list && data.images.size() <= 10 &&
+        data.isCODEnabled is bool &&
+        data.codAllowedAreas is string && data.codAllowedAreas.size() <= 100 &&
+        (!('isFeatured' in data) || data.isFeatured is bool) &&
+        (!('description' in data) || (data.description is string && data.description.size() <= 10000));
+    }
+
+    match /products/{id} {
+      allow read: if true;
+      allow create: if isAdmin() && isValidId(id) && id == incoming().id && isValidProduct(incoming()) && incoming().createdAt == request.time && incoming().updatedAt == request.time;
+      allow update: if isAdmin() && isValidProduct(incoming()) && incoming().id == existing().id && incoming().createdAt == existing().createdAt && incoming().updatedAt == request.time;
+      allow delete: if isAdmin();
+    }
+
+    // ----- CATEGORIES COLLECTION -----
+    function isValidCategory(data) {
+      return isValidId(data.id) &&
+        data.name is string && data.name.size() > 0 && data.name.size() <= 100;
+    }
+
+    match /categories/{id} {
+      allow read: if true;
+      allow create: if isAdmin() && isValidId(id) && id == incoming().id && isValidCategory(incoming()) && incoming().createdAt == request.time;
+      allow update: if isAdmin() && isValidCategory(incoming()) && incoming().id == existing().id;
+      allow delete: if isAdmin();
+    }
+
+    // ----- ORDERS COLLECTION -----
+    function isValidOrderOnCreate(data) {
+      return isValidId(data.id) &&
+        data.customerName is string && data.customerName.size() > 0 && data.customerName.size() <= 200 &&
+        data.customerPhone is string && data.customerPhone.size() >= 11 && data.customerPhone.size() <= 15 &&
+        data.customerAddress is string && data.customerAddress.size() > 0 && data.customerAddress.size() <= 1000 &&
+        data.items is list && data.items.size() > 0 && data.items.size() <= 50 &&
+        data.paymentMethod is string && (data.paymentMethod == 'bKash' || data.paymentMethod == 'Nagad' || data.paymentMethod == 'Rocket' || data.paymentMethod == 'COD') &&
+        data.paymentStatus == 'Pending' &&
+        data.status == 'pending' &&
+        data.totalAmount is number && data.totalAmount >= 0 && data.totalAmount <= 5000000 &&
+        (!('transactionId' in data) || (data.transactionId is string && data.transactionId.size() <= 100)) &&
+        (!('discountCode' in data) || (data.discountCode is string && data.discountCode.size() <= 50)) &&
+        (!('discountAmount' in data) || (data.discountAmount is number && data.discountAmount >= 0));
+    }
+
+    match /orders/{id} {
+      allow list: if isAdmin();
+      allow get: if true; // Allow anyone to get a single order document if they know the exact ID (order tracking pages)
+      allow create: if isValidId(id) && id == incoming().id && isValidOrderOnCreate(incoming()) && incoming().createdAt == request.time && incoming().updatedAt == request.time;
+      allow update: if isAdmin() &&
+        incoming().id == existing().id &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time;
+      allow delete: if isAdmin();
+    }
+
+    // ----- COUPONS COLLECTION -----
+    function isValidCoupon(data) {
+      return data.code is string && data.code.size() > 0 && data.code.size() <= 30 &&
+        data.discountType is string && (data.discountType == 'percentage' || data.discountType == 'flat') &&
+        data.discountValue is number && data.discountValue >= 0 &&
+        data.minOrderAmount is number && data.minOrderAmount >= 0 &&
+        data.isActive is bool;
+    }
+
+    match /coupons/{code} {
+      allow read: if true; // Allow guests to retrieve a coupon to apply the discount code during checkout
+      allow create: if isAdmin() && isValidCoupon(incoming()) && incoming().createdAt == request.time;
+      allow update: if isAdmin() && isValidCoupon(incoming()) && incoming().createdAt == existing().createdAt;
+      allow delete: if isAdmin();
+    }
+
+    // ----- ADMINS COLLECTION -----
+    match /admins/{email} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ----- SETTINGS COLLECTION -----
+    function isValidSettings(data) {
+      return data.id == 'main' &&
+        data.paymentNumbers is map &&
+        data.paymentNumbers.bKash is string &&
+        data.paymentNumbers.Nagad is string &&
+        data.whatsappNumber is string &&
+        (!('facebookPixelId' in data) || data.facebookPixelId is string) &&
+        (!('messengerChatUrl' in data) || data.messengerChatUrl is string);
+    }
+
+    match /settings/{id} {
+      allow read: if true;
+      allow create, update: if isAdmin() && isValidSettings(incoming()) && incoming().updatedAt == request.time;
+      allow delete: if false;
+    }
+  }
+}

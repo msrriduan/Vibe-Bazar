@@ -1,0 +1,247 @@
+{
+  "entities": {
+    "Product": {
+      "title": "Product",
+      "description": "An eCommerce product in Vibebazar",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Product ID"
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the product"
+        },
+        "category": {
+          "type": "string",
+          "description": "Category name or reference"
+        },
+        "description": {
+          "type": "string",
+          "description": "Product description"
+        },
+        "price": {
+          "type": "number",
+          "description": "Price in BDT"
+        },
+        "stock": {
+          "type": "number",
+          "description": "In-stock item count"
+        },
+        "images": {
+          "type": "array",
+          "description": "List of image URLs for the product gallery"
+        },
+        "isCODEnabled": {
+          "type": "boolean",
+          "description": "Whether cash on delivery is enabled for this product"
+        },
+        "codAllowedAreas": {
+          "type": "string",
+          "description": "Either 'all' or 'dhaka' or specific cities where COD is restricted"
+        },
+        "isFeatured": {
+          "type": "boolean",
+          "description": "Whether to highlight on home page"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "name", "category", "price", "stock", "images", "isCODEnabled", "createdAt", "updatedAt"]
+    },
+    "Category": {
+      "title": "Category",
+      "description": "A dynamic product category",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Category ID or slug"
+        },
+        "name": {
+          "type": "string",
+          "description": "Category listing name"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "name", "createdAt"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "A customer order placing receipt",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique Order ID"
+        },
+        "customerName": {
+          "type": "string",
+          "description": "Full name of customer"
+        },
+        "customerPhone": {
+          "type": "string",
+          "description": "Bangladeshi contact mobile number"
+        },
+        "customerAddress": {
+          "type": "string",
+          "description": "Delivery shipping address"
+        },
+        "items": {
+          "type": "array",
+          "description": "Cart items containing product references, selected quantity, and BDT unit price"
+        },
+        "paymentMethod": {
+          "type": "string",
+          "description": "bKash | Nagad | Rocket | COD"
+        },
+        "paymentStatus": {
+          "type": "string",
+          "description": "Pending | Confirmed"
+        },
+        "transactionId": {
+          "type": "string",
+          "description": "Manual input of trxID if bKash/Nagad/Rocket is used"
+        },
+        "status": {
+          "type": "string",
+          "description": "pending | confirmed | delivered | cancelled"
+        },
+        "totalAmount": {
+          "type": "number",
+          "description": "Grand total paid in BDT"
+        },
+        "discountCode": {
+          "type": "string",
+          "description": "Optional promo code applied"
+        },
+        "discountAmount": {
+          "type": "number",
+          "description": "Deducted BDT value from order"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "customerName", "customerPhone", "customerAddress", "items", "paymentMethod", "paymentStatus", "status", "totalAmount", "createdAt", "updatedAt"]
+    },
+    "Coupon": {
+      "title": "Coupon",
+      "description": "Discount coupon code",
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "Uppercase alphanumeric promo code"
+        },
+        "discountType": {
+          "type": "string",
+          "description": "percentage or flat"
+        },
+        "discountValue": {
+          "type": "number",
+          "description": "Amount of discount (e.g. 10 for 10% or 100 for 100 BDT)"
+        },
+        "minOrderAmount": {
+          "type": "number",
+          "description": "Minimum subtotal in BDT required to use it"
+        },
+        "isActive": {
+          "type": "boolean",
+          "description": "Whether coupon is active"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["code", "discountType", "discountValue", "minOrderAmount", "isActive", "createdAt"]
+    },
+    "Admin": {
+      "title": "Admin",
+      "description": "Whitelisted administrator email",
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string",
+          "description": "Authorized Google Email address"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["email"]
+    },
+    "Settings": {
+      "title": "Settings",
+      "description": "Vibebazar configurations",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "paymentNumbers": {
+          "type": "object",
+          "description": "Numbers for bKash, Nagad, Rocket"
+        },
+        "whatsappNumber": {
+          "type": "string",
+          "description": "Admin number for WhatsApp automated messages"
+        },
+        "facebookPixelId": {
+          "type": "string"
+        },
+        "messengerChatUrl": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "paymentNumbers", "whatsappNumber"]
+    }
+  },
+  "firestore": {
+    "products/{id}": {
+      "schema": "Product",
+      "description": "Catalog of fashion items and goods"
+    },
+    "categories/{id}": {
+      "schema": "Category",
+      "description": "List of categories"
+    },
+    "orders/{id}": {
+      "schema": "Order",
+      "description": "Customer purchase records"
+    },
+    "coupons/{code}": {
+      "schema": "Coupon",
+      "description": "Promotional discounts"
+    },
+    "admins/{email}": {
+      "schema": "Admin",
+      "description": "Whitelisted administrator accounts"
+    },
+    "settings/{id}": {
+      "schema": "Settings",
+      "description": "Global Vibebazar online configurations and contact details"
+    }
+  }
+}
