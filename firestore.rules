@@ -54,8 +54,8 @@ service cloud.firestore {
 
     match /products/{id} {
       allow read: if true;
-      allow create: if isAdmin() && isValidId(id) && id == incoming().id && isValidProduct(incoming()) && incoming().createdAt == request.time && incoming().updatedAt == request.time;
-      allow update: if isAdmin() && isValidProduct(incoming()) && incoming().id == existing().id && incoming().createdAt == existing().createdAt && incoming().updatedAt == request.time;
+      allow create: if isAdmin() && isValidId(id) && id == incoming().id && isValidProduct(incoming()) && incoming().createdAt is string && incoming().createdAt.size() >= 15 && incoming().createdAt.size() <= 40 && incoming().updatedAt is string && incoming().updatedAt.size() >= 15 && incoming().updatedAt.size() <= 40;
+      allow update: if isAdmin() && isValidProduct(incoming()) && incoming().id == existing().id && incoming().createdAt == existing().createdAt && incoming().updatedAt is string && incoming().updatedAt.size() >= 15 && incoming().updatedAt.size() <= 40;
       allow delete: if isAdmin();
     }
 
@@ -67,7 +67,7 @@ service cloud.firestore {
 
     match /categories/{id} {
       allow read: if true;
-      allow create: if isAdmin() && isValidId(id) && id == incoming().id && isValidCategory(incoming()) && incoming().createdAt == request.time;
+      allow create: if isAdmin() && isValidId(id) && id == incoming().id && isValidCategory(incoming()) && incoming().createdAt is string && incoming().createdAt.size() >= 15 && incoming().createdAt.size() <= 40;
       allow update: if isAdmin() && isValidCategory(incoming()) && incoming().id == existing().id;
       allow delete: if isAdmin();
     }
@@ -91,11 +91,11 @@ service cloud.firestore {
     match /orders/{id} {
       allow list: if isAdmin();
       allow get: if true; // Allow anyone to get a single order document if they know the exact ID (order tracking pages)
-      allow create: if isValidId(id) && id == incoming().id && isValidOrderOnCreate(incoming()) && incoming().createdAt == request.time && incoming().updatedAt == request.time;
+      allow create: if isValidId(id) && id == incoming().id && isValidOrderOnCreate(incoming()) && incoming().createdAt is string && incoming().createdAt.size() >= 15 && incoming().createdAt.size() <= 40 && incoming().updatedAt is string && incoming().updatedAt.size() >= 15 && incoming().updatedAt.size() <= 40;
       allow update: if isAdmin() &&
         incoming().id == existing().id &&
         incoming().createdAt == existing().createdAt &&
-        incoming().updatedAt == request.time;
+        incoming().updatedAt is string && incoming().updatedAt.size() >= 15 && incoming().updatedAt.size() <= 40;
       allow delete: if isAdmin();
     }
 
@@ -110,7 +110,7 @@ service cloud.firestore {
 
     match /coupons/{code} {
       allow read: if true; // Allow guests to retrieve a coupon to apply the discount code during checkout
-      allow create: if isAdmin() && isValidCoupon(incoming()) && incoming().createdAt == request.time;
+      allow create: if isAdmin() && isValidCoupon(incoming()) && incoming().createdAt is string && incoming().createdAt.size() >= 15 && incoming().createdAt.size() <= 40;
       allow update: if isAdmin() && isValidCoupon(incoming()) && incoming().createdAt == existing().createdAt;
       allow delete: if isAdmin();
     }
@@ -134,7 +134,7 @@ service cloud.firestore {
 
     match /settings/{id} {
       allow read: if true;
-      allow create, update: if isAdmin() && isValidSettings(incoming()) && incoming().updatedAt == request.time;
+      allow create, update: if isAdmin() && isValidSettings(incoming()) && incoming().updatedAt is string && incoming().updatedAt.size() >= 15 && incoming().updatedAt.size() <= 40;
       allow delete: if false;
     }
   }

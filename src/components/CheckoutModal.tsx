@@ -6,6 +6,19 @@ import {
   X, CheckCircle, Smartphone, MapPin, ClipboardList, Wallet, Truck, MessageSquare, ArrowRight, Sparkles 
 } from 'lucide-react';
 
+const BANGLADESH_DISTRICTS = [
+  "Bagerhat", "Bandarban", "Barguna", "Barishal", "Bhola", "Bogura", "Brahmanbaria",
+  "Chandpur", "Chattogram", "Chuadanga", "Cox's Bazar", "Cumilla",
+  "Dhaka", "Dinajpur", "Faridpur", "Feni", "Gaibandha", "Gazipur", "Gopalganj",
+  "Habiganj", "Jamalpur", "Jashore", "Jhalokati", "Jhenaidah", "Joypurhat",
+  "Khagrachhari", "Khulna", "Kishoreganj", "Kurigram", "Kushtia",
+  "Lakshmipur", "Lalmonirhat", "Madaripur", "Magura", "Manikganj", "Meherpur", "Moulvibazar", "Munshiganj", "Mymensingh",
+  "Naogaon", "Narail", "Narayanganj", "Narsingdi", "Natore", "Netrokona", "Nilphamari", "Noakhali",
+  "Pabna", "Panchagarh", "Patuakhali", "Pirojpur", "Rajbari", "Rajshahi", "Rangamati", "Rangpur",
+  "Satkhira", "Shariatpur", "Sherpur", "Sirajganj", "Sunamganj", "Sylhet",
+  "Tangail", "Thakurgaon"
+];
+
 interface CheckoutModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -25,7 +38,7 @@ export default function CheckoutModal({ isOpen, onClose, immediateProduct }: Che
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
-  const [district, setDistrict] = useState('dhaka'); // 'dhaka' | 'outside-dhaka'
+  const [district, setDistrict] = useState('Dhaka'); // Default to capital 'Dhaka'
   const [paymentMethod, setPaymentMethod] = useState<'bKash' | 'Nagad' | 'Rocket' | 'COD'>('bKash');
   const [transactionId, setTransactionId] = useState('');
   
@@ -49,6 +62,7 @@ export default function CheckoutModal({ isOpen, onClose, immediateProduct }: Che
     }
   }
   const totalAmount = Math.max(0, subtotal - discount);
+  const deliveryFee = district === 'Dhaka' ? 70 : 150;
 
   // Evaluate dynamic COD eligibility checks across activeItems
   // Fulfills: "Admin should be able to: turn ON/OFF COD per product, Restrict COD for selected areas or products"
@@ -57,7 +71,7 @@ export default function CheckoutModal({ isOpen, onClose, immediateProduct }: Che
     const itemAllowedAreas = item.product.codAllowedAreas || 'all';
     
     let isAllowedInCurrentArea = true;
-    if (itemAllowedAreas === 'dhaka' && district !== 'dhaka') {
+    if (itemAllowedAreas === 'dhaka' && district !== 'Dhaka') {
       isAllowedInCurrentArea = false;
     } else if (itemAllowedAreas === 'none') {
       isAllowedInCurrentArea = false;
@@ -101,9 +115,11 @@ export default function CheckoutModal({ isOpen, onClose, immediateProduct }: Che
       const order = await placeNewOrder({
         name,
         phone,
-        address: `${address} (${district === 'dhaka' ? 'Inside Dhaka City' : 'Outside Dhaka'})`,
+        address: `${address}, District: ${district} (${district === 'Dhaka' ? 'Inside Dhaka' : 'Outside Dhaka'})`,
         paymentMethod,
-        transactionId: paymentMethod !== 'COD' ? transactionId : undefined
+        transactionId: paymentMethod !== 'COD' ? transactionId : undefined,
+        deliveryFee,
+        overrideItems: activeItems
       });
       
       setPlacedReceipt(order);
@@ -195,16 +211,30 @@ export default function CheckoutModal({ isOpen, onClose, immediateProduct }: Che
                         </div>
 
                         <div>
-                          <label className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest block mb-1">Shipping Zone *</label>
+                          <label className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest block mb-1">Select District *</label>
                           <select
                             value={district}
                             onChange={(e) => setDistrict(e.target.value)}
-                            className="w-full text-sm rounded-xl border border-slate-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900 py-2.5 px-4 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none dark:text-white transition-all"
+                            className="w-full text-sm rounded-xl border border-slate-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900 py-2.5 px-4 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none dark:text-white transition-all cursor-pointer font-medium"
                           >
-                            <option value="dhaka">Inside Dhaka City (BDT 60)</option>
-                            <option value="outside-dhaka">Outside Dhaka (BDT 120)</option>
+                            {BANGLADESH_DISTRICTS.map((dist) => (
+                              <option key={dist} value={dist}>
+                                {dist}
+                              </option>
+                            ))}
                           </select>
                         </div>
+                      </div>
+
+                      {/* Daraz-Style Delivery Charge Banner */}
+                      <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Truck className="h-4 w-4 text-brand-pink" />
+                          <span className="text-xs font-semibold">Delivery Charge (Standard Courier)</span>
+                        </div>
+                        <span className="font-mono text-sm font-black text-brand-pink">
+                          BDT {deliveryFee} <span className="text-[10px] font-normal text-zinc-400">({district === 'Dhaka' ? 'Dhaka District' : 'Outside Dhaka'})</span>
+                        </span>
                       </div>
 
                       <div>
@@ -323,7 +353,7 @@ export default function CheckoutModal({ isOpen, onClose, immediateProduct }: Che
                           <div>
                             <p className="font-display text-sm font-bold">Vibebazar Payment Instructions:</p>
                             <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-                              Send your total bill amount BDT <strong className="text-brand-pink">{totalAmount}</strong> to the following merchant number using "Send Money" or cash out option:
+                              Send your total bill amount BDT <strong className="text-brand-pink">{totalAmount + deliveryFee}</strong> to the following merchant number using "Send Money" or cash out option:
                             </p>
                             <p className="font-mono text-base font-black bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg py-1 px-3 mt-2 inline-block">
                               📱 {paymentMethod} Personal: {settings.paymentNumbers[paymentMethod] || '01989475141'}
@@ -353,7 +383,7 @@ export default function CheckoutModal({ isOpen, onClose, immediateProduct }: Che
                           <div>
                             <p className="font-display text-sm font-bold text-green-700 dark:text-green-400">Cash on Delivery Verified</p>
                             <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-                              Fulfill the total billing of BDT <strong>{totalAmount}</strong> details to the dispatcher upon home parcel handout.
+                              Fulfill the total billing of BDT <strong>{totalAmount + deliveryFee}</strong> details to the dispatcher upon home parcel handout.
                             </p>
                           </div>
                         </div>
@@ -401,12 +431,12 @@ export default function CheckoutModal({ isOpen, onClose, immediateProduct }: Che
                     
                     <div className="flex justify-between">
                       <span>Delivery Fee</span>
-                      <span className="font-mono text-zinc-900 dark:text-white">BDT {district === 'dhaka' ? 60 : 120}</span>
+                      <span className="font-mono text-zinc-900 dark:text-white">BDT {deliveryFee}</span>
                     </div>
                     
                     <div className="flex justify-between text-base font-black text-zinc-900 dark:text-white pt-2.5 border-t border-zinc-200 dark:border-zinc-800">
                       <span className="font-display">Grand Total</span>
-                      <span className="font-mono text-brand-pink">BDT {totalAmount + (district === 'dhaka' ? 60 : 120)}</span>
+                      <span className="font-mono text-brand-pink">BDT {totalAmount + deliveryFee}</span>
                     </div>
                   </div>
 

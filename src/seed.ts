@@ -58,6 +58,89 @@ export const SEED_PRODUCTS: Product[] = [
     updatedAt: new Date().toISOString()
   },
   {
+    id: 'vib-007',
+    name: "Anime Print Graphic Drop-Shoulder Tee",
+    category: 'mens-fashion',
+    price: 850,
+    stock: 35,
+    images: [
+      'https://images.unsplash.com/photo-1576566588028-4147f3842f27?auto=format&fit=crop&w=600&q=80',
+      'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=600&q=80'
+    ],
+    isCODEnabled: true,
+    codAllowedAreas: 'all',
+    isFeatured: true,
+    description: "Bold manga/anime back print on 100% premium 240 GSM organic combed cotton. Breathable streetwear fit with soft-ribbed crew neckline. Double-stitched seams designed for high-density daily wear.",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  },
+  {
+    id: 'vib-008',
+    name: "Dhaka Retro Noir Cargo Pants",
+    category: 'mens-fashion',
+    price: 1550,
+    stock: 18,
+    images: [
+      'https://images.unsplash.com/photo-1542272604-787c3835535d?auto=format&fit=crop&w=600&q=80',
+      'https://images.unsplash.com/photo-1517423568366-8b83523034fd?auto=format&fit=crop&w=600&q=80'
+    ],
+    isCODEnabled: true,
+    codAllowedAreas: 'all',
+    isFeatured: false,
+    description: "Rugged yet stylish utility streetwear cargo pants with adjustable ankle velcro-straps. Built from resilient cotton ripstop blend with multi-pocket setup. Perfect match for oversized chunky kicks.",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  },
+  {
+    id: 'vib-004',
+    name: "Luxe Linen Kurti",
+    category: 'womens-fashion',
+    price: 1850,
+    stock: 15,
+    images: [
+      'https://images.unsplash.com/photo-1595777457583-95e059d581b8?auto=format&fit=crop&w=600&q=80',
+      'https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=600&q=80'
+    ],
+    isCODEnabled: true,
+    codAllowedAreas: 'all',
+    isFeatured: false,
+    description: "Breathe easy in our pure linen summer long Kurti. Features detailed pastel floral handloom patterns and a loose comfortable fit. Perfect for casual office days or hanging out.",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  },
+  {
+    id: 'vib-009',
+    name: "Akiara Pleated High-Waist Trousers",
+    category: 'womens-fashion',
+    price: 1250,
+    stock: 20,
+    images: [
+      'https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?auto=format&fit=crop&w=600&q=80'
+    ],
+    isCODEnabled: true,
+    codAllowedAreas: 'all',
+    isFeatured: true,
+    description: "Sophisticated pleated high-waist aesthetic trousers tailored for an elegant drape. Lightweight crease-resistant crepe fabric with hidden zipper and back elastic band. Elevates your aesthetic streetwear look instantly.",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  },
+  {
+    id: 'vib-010',
+    name: "Ethereal Pastel Cropped Cardigan",
+    category: 'womens-fashion',
+    price: 1150,
+    stock: 15,
+    images: [
+      'https://images.unsplash.com/photo-1434389677669-e08b4cac3105?auto=format&fit=crop&w=600&q=80'
+    ],
+    isCODEnabled: true,
+    codAllowedAreas: 'all',
+    isFeatured: false,
+    description: "Beautiful pastel lavender soft-knit cardigan with detailed faux-tortoise buttons. Cropped boxy vintage model perfect for styling as a top or layered outerwear.",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  },
+  {
     id: 'vib-003',
     name: "Cyberpunk Glow Sunset Aviators",
     category: 'accessories',
@@ -75,19 +158,50 @@ export const SEED_PRODUCTS: Product[] = [
     updatedAt: new Date().toISOString()
   },
   {
-    id: 'vib-004',
-    name: "Luxe Linen Linen Kurti",
-    category: 'womens-fashion',
-    price: 1850,
-    stock: 15,
+    id: 'vib-011',
+    name: "Vibe-Check Retro Beanie",
+    category: 'accessories',
+    price: 420,
+    stock: 50,
     images: [
-      'https://images.unsplash.com/photo-1595777457583-95e059d581b8?auto=format&fit=crop&w=600&q=80',
-      'https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=600&q=80'
+      'https://images.unsplash.com/photo-1576871337622-98d48d4aa53e?auto=format&fit=crop&w=600&q=80'
     ],
     isCODEnabled: true,
     codAllowedAreas: 'all',
     isFeatured: false,
-    description: "Breathe easy in our pure linen summer long Kurti. Features detailed pastel floral handloom patterns and a loose comfortable fit. Perfect for casual office days or hanging out.",
+    description: "Classic rib-knit fold-over acrylic beanie featuring the subtle sewn Vibebazar brand accent. Stretchy, incredibly warm, and complements oversized sweaters and jackets perfectly.",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  },
+  {
+    id: 'vib-012',
+    name: "Urban Nomad Canvas Tote Bag",
+    category: 'accessories',
+    price: 480,
+    stock: 40,
+    images: [
+      'https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=600&q=80'
+    ],
+    isCODEnabled: true,
+    codAllowedAreas: 'all',
+    isFeatured: true,
+    description: "Heavy-duty 16oz cotton canvas tote featuring high-contrast vintage typography. Fits an entire 15-inch laptop, notebooks, and dynamic daily supplies. Built to withstand daily university commutes.",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  },
+  {
+    id: 'vib-013',
+    name: "Sleek Silver Cuban Link Chain (2-Pack)",
+    category: 'accessories',
+    price: 550,
+    stock: 30,
+    images: [
+      'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&w=600&q=80'
+    ],
+    isCODEnabled: true,
+    codAllowedAreas: 'all',
+    isFeatured: false,
+    description: "Premium hypoallergenic 316L stainless steel layered Cuban link chain set (18 inch and 20 inch). Features robust secure lobster claws. Water, sweat, and tarnish-resistant for seamless daily wear.",
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   },
@@ -120,6 +234,39 @@ export const SEED_PRODUCTS: Product[] = [
     codAllowedAreas: 'all',
     isFeatured: true,
     description: "Premium black anodized stainless steel watch featuring a charcoal textured dial, mesh strap, and standard waterproof chassis. The ultimate timeless daily companion.",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  },
+  {
+    id: 'vib-014',
+    name: "CyberGlow Mechanical Keyboard (65% Custom)",
+    category: 'electronics',
+    price: 4800,
+    stock: 7,
+    images: [
+      'https://images.unsplash.com/photo-1618384887929-16ec33fab9ef?auto=format&fit=crop&w=600&q=80',
+      'https://images.unsplash.com/photo-1587829741301-dc798b83add3?auto=format&fit=crop&w=600&q=80'
+    ],
+    isCODEnabled: true,
+    codAllowedAreas: 'dhaka',
+    isFeatured: true,
+    description: "Hot-swappable 65% custom mechanical keyboard optimized for typists and gamers. Featuring pre-lubed linear switches, premium sound-dampening foam, custom keycaps, and dynamic smart-app custom RGB backlighting.",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  },
+  {
+    id: 'vib-015',
+    name: "RGB Ambient Neon Desk Strip",
+    category: 'electronics',
+    price: 950,
+    stock: 25,
+    images: [
+      'https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&w=600&q=80'
+    ],
+    isCODEnabled: true,
+    codAllowedAreas: 'all',
+    isFeatured: false,
+    description: "Smart room decor led neon strip with responsive music-sync controllers. Features App and Bluetooth remote control, 16 million colors, and dynamic color segments for the ultimate Gen-Z gaming or content creation desk setup.",
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   }

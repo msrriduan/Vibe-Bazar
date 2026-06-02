@@ -41,7 +41,15 @@ interface ShopContextType {
   
   // Checkout & Ordering
   isPlacingOrder: boolean;
-  placeNewOrder: (custDetails: { name: string; phone: string; address: string; paymentMethod: 'bKash' | 'Nagad' | 'Rocket' | 'COD'; transactionId?: string }) => Promise<Order>;
+  placeNewOrder: (custDetails: { 
+    name: string; 
+    phone: string; 
+    address: string; 
+    paymentMethod: 'bKash' | 'Nagad' | 'Rocket' | 'COD'; 
+    transactionId?: string;
+    deliveryFee?: number;
+    overrideItems?: CartItem[];
+  }) => Promise<Order>;
   
   // Admin Operations
   addProduct: (product: Omit<Product, 'createdAt' | 'updatedAt'>) => Promise<void>;
@@ -248,28 +256,63 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const seedDatabase = async () => {
     try {
       // Seed Settings
-      await setDoc(doc(db, 'settings', 'main'), DEFAULT_SETTINGS);
+      await setDoc(doc(db, 'settings', 'main'), DEFAULT_SETTINGS, { merge: true });
       
       // Seed Categories
       for (const cat of SEED_CATEGORIES) {
-        await setDoc(doc(db, 'categories', cat.id), cat);
+        const docRef = doc(db, 'categories', cat.id);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const existingData = docSnap.data();
+          await setDoc(docRef, {
+            ...cat,
+            createdAt: existingData.createdAt || cat.createdAt
+          });
+        } else {
+          await setDoc(docRef, cat);
+        }
       }
       
       // Seed Products
       for (const prod of SEED_PRODUCTS) {
-        await setDoc(doc(db, 'products', prod.id), prod);
+        const docRef = doc(db, 'products', prod.id);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const existingData = docSnap.data();
+          await setDoc(docRef, {
+            ...prod,
+            createdAt: existingData.createdAt || prod.createdAt,
+            updatedAt: new Date().toISOString()
+          });
+        } else {
+          await setDoc(docRef, prod);
+        }
       }
       
       // Seed Coupons
       for (const coup of SEED_COUPONS) {
-        await setDoc(doc(db, 'coupons', coup.code), coup);
+        const docRef = doc(db, 'coupons', coup.code);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const existingData = docSnap.data();
+          await setDoc(docRef, {
+            ...coup,
+            createdAt: existingData.createdAt || coup.createdAt
+          });
+        } else {
+          await setDoc(docRef, coup);
+        }
       }
 
       // Seed Bootstrap Admin
-      await setDoc(doc(db, 'admins', 'motiur3271@gmail.com'), {
-        email: 'motiur3271@gmail.com',
-        createdAt: new Date().toISOString()
-      });
+      const adminRef = doc(db, 'admins', 'motiur3271@gmail.com');
+      const adminSnap = await getDoc(adminRef);
+      if (!adminSnap.exists()) {
+        await setDoc(adminRef, {
+          email: 'motiur3271@gmail.com',
+          createdAt: new Date().toISOString()
+        });
+      }
       
       console.log('Database Seeding Completed Successfully!');
     } catch (error) {
@@ -326,10 +369,20 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   };
 
   // Place order
-  const placeNewOrder = async (custDetails: { name: string; phone: string; address: string; paymentMethod: 'bKash' | 'Nagad' | 'Rocket' | 'COD'; transactionId?: string }) => {
+  const placeNewOrder = async (custDetails: { 
+    name: string; 
+    phone: string; 
+    address: string; 
+    paymentMethod: 'bKash' | 'Nagad' | 'Rocket' | 'COD'; 
+    transactionId?: string;
+    deliveryFee?: number;
+    overrideItems?: CartItem[];
+  }) => {
     setIsPlacingOrder(true);
     const orderId = `VIBE-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 900)}`;
-    const subtotal = cart.reduce((total, item) => total + (item.product.price * item.quantity), 0);
+    
+    const activeItems = custDetails.overrideItems || cart;
+    const subtotal = activeItems.reduce((total, item) => total + (item.product.price * item.quantity), 0);
     
     let discount = 0;
     if (appliedCoupon) {
@@ -340,9 +393,10 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       }
     }
     
-    const grandTotal = Math.max(0, subtotal - discount);
+    const delivery = custDetails.deliveryFee || 0;
+    const grandTotal = Math.max(0, subtotal - discount) + delivery;
     
-    const orderItems: OrderItem[] = cart.map(item => ({
+    const orderItems: OrderItem[] = activeItems.map(item => ({
       id: item.product.id,
       name: item.product.name,
       price: item.product.price,
@@ -377,7 +431,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       await setDoc(doc(db, 'orders', orderId), orderPayload);
       
       // 2. Adjust stock in Firestore for each item in batch/sequentially
-      for (const item of cart) {
+      for (const item of activeItems) {
         const itemRef = doc(db, 'products', item.product.id);
         const nextStock = Math.max(0, item.product.stock - item.quantity);
         await updateDoc(itemRef, { stock: nextStock });
