@@ -141,7 +141,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       setUser(currentUser);
       if (currentUser) {
         // Enforce the bootstrapped email or do dynamic Admin check
-        const isEmailAdmin = currentUser.email === 'motiur3271@gmail.com';
+        const ADMIN_EMAILS = ['motiur3271@gmail.com', 'msrriduan@gmail.com'];
+        const isEmailAdmin = currentUser.email ? ADMIN_EMAILS.includes(currentUser.email) : false;
         let databaseAdminCheck = false;
         
         try {
@@ -304,14 +305,17 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
-      // Seed Bootstrap Admin
-      const adminRef = doc(db, 'admins', 'motiur3271@gmail.com');
-      const adminSnap = await getDoc(adminRef);
-      if (!adminSnap.exists()) {
-        await setDoc(adminRef, {
-          email: 'motiur3271@gmail.com',
-          createdAt: new Date().toISOString()
-        });
+      // Seed Bootstrap Admins
+      const adminEmails = ['motiur3271@gmail.com', 'msrriduan@gmail.com'];
+      for (const email of adminEmails) {
+        const adminRef = doc(db, 'admins', email);
+        const adminSnap = await getDoc(adminRef);
+        if (!adminSnap.exists()) {
+          await setDoc(adminRef, {
+            email: email,
+            createdAt: new Date().toISOString()
+          });
+        }
       }
       
       console.log('Database Seeding Completed Successfully!');
