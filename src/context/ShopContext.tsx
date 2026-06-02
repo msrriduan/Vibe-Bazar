@@ -65,6 +65,7 @@ interface ShopContextType {
   
   // Seeding
   seedDatabase: () => Promise<void>;
+  restoreDatabaseFromBackup: (backup: any) => Promise<void>;
   
   // Auth actions
   login: () => Promise<void>;
@@ -335,6 +336,58 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       console.log('Database Seeding Completed Successfully!');
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, 'seeding');
+    }
+  };
+
+  const restoreDatabaseFromBackup = async (backup: any) => {
+    try {
+      if (!backup) {
+        throw new Error('Empty backup received');
+      }
+
+      // 1. Restore Categories
+      if (backup.categories && Array.isArray(backup.categories)) {
+        for (const cat of backup.categories) {
+          if (cat.id && cat.name) {
+            await setDoc(doc(db, 'categories', cat.id), cat);
+          }
+        }
+      }
+
+      // 2. Restore Products
+      if (backup.products && Array.isArray(backup.products)) {
+        for (const prod of backup.products) {
+          if (prod.id) {
+            await setDoc(doc(db, 'products', prod.id), prod);
+          }
+        }
+      }
+
+      // 3. Restore Coupons
+      if (backup.coupons && Array.isArray(backup.coupons)) {
+        for (const coup of backup.coupons) {
+          if (coup.code) {
+            await setDoc(doc(db, 'coupons', coup.code), coup);
+          }
+        }
+      }
+
+      // 4. Restore Orders
+      if (backup.orders && Array.isArray(backup.orders)) {
+        for (const ord of backup.orders) {
+          if (ord.id) {
+            await setDoc(doc(db, 'orders', ord.id), ord);
+          }
+        }
+      }
+
+      // 5. Restore Settings
+      if (backup.settings) {
+        await setDoc(doc(db, 'settings', 'main'), backup.settings);
+      }
+    } catch (error) {
+      console.error('Failed to restore database from backup:', error);
+      throw error;
     }
   };
 
@@ -644,6 +697,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       updateStoreSettings,
       
       seedDatabase,
+      restoreDatabaseFromBackup,
       login,
       logout
     }}>

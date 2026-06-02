@@ -1,13 +1,15 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useShop } from '../context/ShopContext';
 import { Product, Order, Category, Coupon, SystemSettings } from '../types';
 import { 
   Plus, Trash, Edit, Save, Check, X, Shield, RefreshCw, Smartphone, 
   MapPin, ShoppingCart, Layers, Tag, Settings, DollarSign, Archive, Eye,
   Search, Phone, ChevronDown, ChevronUp, Star, CreditCard, Bell, 
-  AlertTriangle, CheckCircle2, XCircle, Truck, Package, Percent
+  AlertTriangle, CheckCircle2, XCircle, Truck, Package, Percent,
+  Cloud, CloudUpload, CloudDownload, HardDrive
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { getGoogleAccessToken, setGoogleAccessToken } from '../firebase';
 
 export default function AdminPanel() {
   const {
@@ -25,11 +27,231 @@ export default function AdminPanel() {
     addCoupon,
     deleteCoupon,
     updateStoreSettings,
-    seedDatabase
+    seedDatabase,
+    restoreDatabaseFromBackup,
+    login,
+    user
   } = useShop();
 
   // Active Tab
-  const [activeTab, setActiveTab] = useState<'overview' | 'orders' | 'products' | 'promos' | 'settings'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'orders' | 'products' | 'promos' | 'settings' | 'drive'>('overview');
+
+  // Google Drive Integration State
+  const [googleToken, setGoogleToken] = useState<string | null>(null);
+  const [isDriveLoading, setIsDriveLoading] = useState(false);
+  const [driveFiles, setDriveFiles] = useState<{ id: string; name: string; createdTime: string; size?: number }[]>([]);
+  const [driveError, setDriveError] = useState<string | null>(null);
+  const [isBackingUp, setIsBackingUp] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
+  const [restoreProgress, setRestoreProgress] = useState<string | null>(null);
+
+  const fetchDriveFiles = async (tokenToUse: string) => {
+    setIsDriveLoading(true);
+    setDriveError(null);
+    try {
+      const url = `https://www.googleapis.com/drive/v3/files?q=name+contains+'vibebazar-backup'+and+mimeType='application/json'+and+trashed=false&fields=files(id,name,createdTime,size)&orderBy=createdTime+desc`;
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${tokenToUse}` },
+      });
+
+      if (!res.ok) {
+        if (res.status === 401) {
+          setGoogleToken(null);
+          setGoogleAccessToken(null);
+          throw new Error('Google authentication has expired. Please re-authenticate.');
+        }
+        throw new Error(`Failed to fetch files from Google Drive: ${res.statusText}`);
+      }
+
+      const data = await res.json();
+      setDriveFiles(data.files || []);
+    } catch (err: any) {
+      console.error(err);
+      setDriveError(err?.message || 'Error occurred while loading backups.');
+    } finally {
+      setIsDriveLoading(false);
+    }
+  };
+
+  const handleDriveAuth = async () => {
+    setDriveError(null);
+    setIsDriveLoading(true);
+    try {
+      await login();
+      const freshToken = getGoogleAccessToken();
+      setGoogleToken(freshToken);
+      if (freshToken) {
+        await fetchDriveFiles(freshToken);
+      } else {
+        throw new Error('Failed to acquire a Google Drive authentication token.');
+      }
+    } catch (err: any) {
+      console.error('Google Auth Error:', err);
+      setDriveError(err?.message || 'Failed to authenticate Google Drive. Standard Popup limits inside an iframe sandbox can cause this. Please open in a new tab.');
+    } finally {
+      setIsDriveLoading(false);
+    }
+  };
+
+  const handleCreateBackup = async () => {
+    const activeTok = googleToken || getGoogleAccessToken();
+    if (!activeTok) {
+      setDriveError('Please authenticate first.');
+      return;
+    }
+
+    const confirmBackup = window.confirm(
+      'Are you sure you want to CREATE a new backup of all products, categories, coupons, historical orders, and settings to your Google Drive?'
+    );
+    if (!confirmBackup) return;
+
+    setIsBackingUp(true);
+    setDriveError(null);
+    try {
+      const backupPayload = {
+        products,
+        categories,
+        coupons,
+        orders,
+        settings,
+        version: '1.0.0',
+        createdAt: new Date().toISOString()
+      };
+
+      await createDriveBackupFile(activeTok, backupPayload);
+      alert('Backup successfully saved to Google Drive!');
+      await fetchDriveFiles(activeTok);
+    } catch (err: any) {
+      console.error(err);
+      setDriveError(err?.message || 'Failed to upload backup.');
+    } finally {
+      setIsBackingUp(false);
+    }
+  };
+
+  const handleRestoreBackup = async (file: { id: string; name: string }) => {
+    const activeTok = googleToken || getGoogleAccessToken();
+    if (!activeTok) {
+      setDriveError('Please authenticate first.');
+      return;
+    }
+
+    const confirmRestore = window.confirm(
+      `CRITICAL ACTION:\nAre you sure you want to RESTORE your entire store database using backup "${file.name}"?\n\nThis is a destructive task. All your existing products, categories, orders, coupons, and payment gateway parameters will be completely overwritten by this backup's records.\n\nPlease click OK to continue to verification.`
+    );
+    if (!confirmRestore) return;
+
+    const safetyVerification = window.prompt('To prevent accidental overrides, please type "RESTORE" below to complete:');
+    if (safetyVerification !== 'RESTORE') {
+      alert('Restoration action aborted: matching code prompt did not match.');
+      return;
+    }
+
+    setIsRestoring(true);
+    setRestoreProgress('Downloading backup content from cloud...');
+    setDriveError(null);
+    try {
+      const downloadUrl = `https://www.googleapis.com/drive/v3/files/${file.id}?alt=media`;
+      const res = await fetch(downloadUrl, {
+        headers: { Authorization: `Bearer ${activeTok}` },
+      });
+
+      if (!res.ok) {
+        throw new Error(`Failed to download backup: ${res.statusText}`);
+      }
+
+      const backupContent = await res.json();
+      setRestoreProgress('Writing items to Firebase Database...');
+      await restoreDatabaseFromBackup(backupContent);
+      
+      setRestoreProgress('Restoration complete!');
+      alert('Store synchronized successfully from Google Drive backup!');
+    } catch (err: any) {
+      console.error(err);
+      setDriveError(err?.message || 'Restoration failed. Please check file validity.');
+    } finally {
+      setIsRestoring(false);
+      setRestoreProgress(null);
+    }
+  };
+
+  const handleDeleteBackup = async (fileId: string) => {
+    const activeTok = googleToken || getGoogleAccessToken();
+    if (!activeTok) {
+      setDriveError('Please authenticate first.');
+      return;
+    }
+
+    const confirmDelete = window.confirm('Are you sure you want to permanently DELETE this backup file from Google Drive? This action is irreversible.');
+    if (!confirmDelete) return;
+
+    setIsDriveLoading(true);
+    setDriveError(null);
+    try {
+      const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${activeTok}` },
+      });
+
+      if (!res.ok) {
+        throw new Error(`Failed to delete backup file: ${res.statusText}`);
+      }
+
+      await fetchDriveFiles(activeTok);
+    } catch (err: any) {
+      console.error(err);
+      setDriveError(err?.message || 'Failed to delete file.');
+    } finally {
+      setIsDriveLoading(false);
+    }
+  };
+
+  const createDriveBackupFile = async (tok: string, payload: any) => {
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const filename = `vibebazar-backup-${timestamp}.json`;
+    const metadata = {
+      name: filename,
+      mimeType: 'application/json',
+      description: 'Vibebazar eCommerce automated backup file'
+    };
+
+    const boundary = 'vibe_bazar_multipart_boundary';
+    const delimiter = `\r\n--${boundary}\r\n`;
+    const closeDelimiter = `\r\n--${boundary}--`;
+
+    const body = delimiter +
+      'Content-Type: application/json; charset=UTF-8\r\n\r\n' +
+      JSON.stringify(metadata) +
+      delimiter +
+      'Content-Type: application/json\r\n\r\n' +
+      JSON.stringify(payload, null, 2) +
+      closeDelimiter;
+
+    const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${tok}`,
+        'Content-Type': `multipart/related; boundary=${boundary}`,
+      },
+      body: body
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`Backup creation failed: ${errText}`);
+    }
+    return await res.json();
+  };
+
+  useEffect(() => {
+    if (activeTab === 'drive') {
+      const tok = getGoogleAccessToken();
+      setGoogleToken(tok);
+      if (tok) {
+        fetchDriveFiles(tok);
+      }
+    }
+  }, [activeTab]);
 
   // Interactive local feedback for real-time actions
   const [updatingProductId, setUpdatingProductId] = useState<string | null>(null);
@@ -1228,11 +1450,180 @@ export default function AdminPanel() {
           </div>
         )}
 
+        {activeTab === 'drive' && (
+          <div className="space-y-6 select-none">
+            
+            <div className="rounded-2xl border border-zinc-900 bg-zinc-900/35 p-5 space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-display text-base font-black uppercase text-white tracking-tight flex items-center gap-1.5">
+                    <Cloud className="h-5 w-5 text-brand-pink" />
+                    <span>Google Drive Backups</span>
+                  </h3>
+                  <p className="text-zinc-[450] text-[11px] font-medium leading-relaxed mt-1">
+                    Securely preserve products, categories, coupons, historical order logs, and system credentials directly in your personal cloud storage.
+                  </p>
+                </div>
+              </div>
+
+              {/* Status Alert Banner */}
+              {driveError && (
+                <div className="p-4 rounded-xl bg-rose-950/20 border border-rose-900/40 text-rose-400 text-xs font-semibold flex items-start gap-2.5">
+                  <AlertTriangle className="h-5 w-5 shrink-0 text-rose-500 mt-0.5" />
+                  <p className="leading-relaxed">{driveError}</p>
+                </div>
+              )}
+
+              {/* Loader overlay for Restoration */}
+              {isRestoring && (
+                <div className="p-5 text-center flex flex-col items-center justify-center bg-zinc-950/80 border border-zinc-900 rounded-2xl space-y-3">
+                  <div className="h-8 w-8 border-3 border-brand-pink/30 border-t-brand-pink rounded-full animate-spin" />
+                  <p className="text-white text-xs font-display font-bold uppercase tracking-wider">{restoreProgress || 'Synchronizing Store databases...'}</p>
+                </div>
+              )}
+
+              {!googleToken ? (
+                /* 1. Connect Google Drive Authorization Screen */
+                <div className="p-8 text-center bg-zinc-950/45 rounded-2xl border border-zinc-900 space-y-5">
+                  <div className="relative mx-auto h-16 w-16 bg-brand-pink/5 border border-brand-pink/10 rounded-full flex items-center justify-center shadow-xs">
+                    <HardDrive className="h-7 w-7 text-brand-pink" />
+                    <div className="absolute top-0 right-0 h-3 w-3 bg-zinc-500 rounded-full border-2 border-zinc-950 animate-pulse" />
+                  </div>
+
+                  <div className="max-w-xs mx-auto space-y-1.5">
+                    <h4 className="text-white font-display text-xs font-black uppercase tracking-wider">Authorize Cloud Connection</h4>
+                    <p className="text-zinc-[450] text-[10px] font-medium leading-normal">
+                      Link your Google Account to automatically save transaction backups and catalog exports with user permissions.
+                    </p>
+                  </div>
+
+                  {/* Google Material Button implementation */}
+                  <div className="flex justify-center">
+                    <button
+                      onClick={handleDriveAuth}
+                      disabled={isDriveLoading}
+                      className="inline-flex items-center bg-zinc-900 hover:bg-zinc-850 border border-zinc-850 hover:border-zinc-800 text-white rounded-xl px-5 py-3 text-xs font-sans font-bold uppercase tracking-wider transition-all gap-2.5 cursor-pointer shadow-sm disabled:opacity-50"
+                    >
+                      {isDriveLoading ? (
+                        <div className="h-4 w-4 border-2 border-zinc-500 border-t-white rounded-full animate-spin" />
+                      ) : (
+                        <>
+                          <svg className="h-4 w-4 shrink-0" version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+                            <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path>
+                            <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"></path>
+                            <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"></path>
+                            <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path>
+                          </svg>
+                          <span>Connect Google Drive</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                /* 2. Authenticated Dashboard Actions */
+                <div className="space-y-6">
+                  
+                  {/* Sync Controls Banner */}
+                  <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-900 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="h-9 w-9 bg-emerald-500/5 border border-emerald-500/10 rounded-full flex items-center justify-center text-emerald-500 shrink-0">
+                        <CheckCircle2 className="h-5 w-5 animate-pulse" />
+                      </div>
+                      <div>
+                        <p className="text-slate-200 text-xs font-bold font-sans">Active Cloud Link</p>
+                        <p className="text-[10px] text-zinc-500 font-bold tracking-tight uppercase font-mono mt-0.5">Google Drive Service Authorized</p>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2 w-full sm:w-auto">
+                      <button
+                        onClick={handleCreateBackup}
+                        disabled={isBackingUp || isDriveLoading}
+                        className="flex-1 sm:flex-none py-2.5 px-4 rounded-lg bg-gradient-to-r from-brand-orange to-brand-pink text-white font-display text-[10px] font-black uppercase tracking-wider transition-all hover:opacity-95 flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                      >
+                        {isBackingUp ? (
+                          <div className="h-3 w-3 border-2 border-white/35 border-t-white rounded-full animate-spin" />
+                        ) : (
+                          <CloudUpload className="h-3.5 w-3.5" />
+                        )}
+                        <span>New Backup</span>
+                      </button>
+
+                      <button
+                        onClick={() => fetchDriveFiles(googleToken)}
+                        disabled={isDriveLoading}
+                        className="py-2.5 px-3 rounded-lg border border-zinc-850 hover:border-zinc-800 bg-zinc-900 text-zinc-400 hover:text-white transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <RefreshCw className={`h-3.5 w-3.5 ${isDriveLoading ? 'animate-spin text-brand-pink' : ''}`} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Backup list table */}
+                  <div className="space-y-3">
+                    <p className="font-display text-[9px] font-black uppercase tracking-widest text-zinc-450 flex items-center gap-2">
+                      <span className="h-1.5 w-1.5 bg-brand-pink rounded-full" />
+                      <span>Historic Backups ({driveFiles.length})</span>
+                    </p>
+
+                    {driveFiles.length === 0 ? (
+                      <div className="p-8 text-center bg-zinc-950/25 border border-zinc-900 border-dashed rounded-xl space-y-2">
+                        <p className="text-zinc-[450] text-xs font-medium font-sans">No backups saved yet</p>
+                        <p className="text-zinc-500 text-[10px] leading-relaxed max-w-xs mx-auto">
+                          Perform your first database backup above to securely store Vibebazar database snapshots inside your Google Drive foldering systems.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="divide-y divide-zinc-900 border border-zinc-900 bg-zinc-950/25 rounded-xl overflow-hidden max-h-[350px] overflow-y-auto">
+                        {driveFiles.map((file) => (
+                          <div key={file.id} className="p-4 flex items-center justify-between gap-4 hover:bg-zinc-950/30 transition-colors">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className="p-2 bg-brand-pink/5 border border-brand-pink/10 rounded-lg text-brand-pink shrink-0">
+                                <HardDrive className="h-4.5 w-4.5" />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-zinc-[250] text-xs font-bold font-mono truncate">{file.name}</p>
+                                <div className="flex items-center gap-2 text-[10px] text-zinc-500 font-mono mt-0.5">
+                                  <span>{file.createdTime ? new Date(file.createdTime).toLocaleString() : 'Date unknown'}</span>
+                                  <span>•</span>
+                                  <span>{file.size ? `${(Number(file.size) / 1024).toFixed(1)} KB` : 'N/A'}</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex gap-1.5 shrink-0">
+                              <button
+                                onClick={() => handleRestoreBackup(file)}
+                                title="Restore from this backup"
+                                className="p-2 bg-zinc-900 hover:bg-zinc-850 border border-zinc-850 hover:border-zinc-800 hover:text-emerald-500 text-zinc-400 rounded-lg transition-all cursor-pointer"
+                              >
+                                <CloudDownload className="h-4 w-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteBackup(file.id)}
+                                title="Delete backup"
+                                className="p-2 bg-zinc-900 hover:bg-zinc-850 border border-zinc-850 hover:border-zinc-800 hover:text-rose-500 text-zinc-400 rounded-lg transition-all cursor-pointer"
+                              >
+                                <Trash className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
       </main>
 
       {/* Floating Bottom Navigator (Optimized for thumb tap-action toggling) */}
       <footer className="fixed bottom-0 left-0 right-0 z-40 bg-zinc-950/80 backdrop-blur-md border-t border-zinc-900 p-2.5 pb-6">
-        <div className="max-w-lg mx-auto grid grid-cols-5 gap-1 text-center font-display">
+        <div className="max-w-lg mx-auto grid grid-cols-6 gap-1 text-center font-display">
           
           <button
             onClick={() => setActiveTab('overview')}
@@ -1287,6 +1678,16 @@ export default function AdminPanel() {
           >
             <Settings className="h-4.5 w-4.5" />
             <span className="text-[8px] font-black uppercase tracking-wider mt-1.5 block">Settings</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('drive')}
+            className={`flex flex-col items-center justify-center py-2 rounded-xl cursor-pointer select-none transition-transform active:scale-90 ${
+              activeTab === 'drive' ? 'text-brand-pink' : 'text-zinc-500 hover:text-zinc-300'
+            }`}
+          >
+            <Cloud className="h-4.5 w-4.5" />
+            <span className="text-[8px] font-black uppercase tracking-wider mt-1.5 block">Backup</span>
           </button>
 
         </div>
