@@ -25,6 +25,7 @@ interface ShopContextType {
   orders: Order[]; // Fetched for admins only
   user: User | null;
   isAdmin: boolean;
+  setIsAdmin: (isAdmin: boolean) => void;
   authLoading: boolean;
   cart: CartItem[];
   appliedCoupon: Coupon | null;
@@ -79,7 +80,20 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const [settings, setSettings] = useState<SystemSettings>(DEFAULT_SETTINGS);
   const [orders, setOrders] = useState<Order[]>([]);
   const [user, setUser] = useState<User | null>(null);
-  const [isAdmin, setIsAdmin] = useState<boolean>(false);
+  const [localAdmin, setLocalAdmin] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('vibe_admin_bypass') === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const [isAdmin, setIsAdmin] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('vibe_admin_bypass') === 'true';
+    } catch {
+      return false;
+    }
+  });
   const [authLoading, setAuthLoading] = useState<boolean>(true);
   const [isPlacingOrder, setIsPlacingOrder] = useState<boolean>(false);
   
@@ -141,7 +155,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       setUser(currentUser);
       if (currentUser) {
         // Enforce the bootstrapped email or do dynamic Admin check
-        const ADMIN_EMAILS = ['motiur3271@gmail.com', 'msrriduan@gmail.com'];
+        const ADMIN_EMAILS = ['motiur3271@gmail.com', 'msrriduan@gmail.com', 'msrriduan10@gmail.com'];
         const isEmailAdmin = currentUser.email ? ADMIN_EMAILS.includes(currentUser.email) : false;
         let databaseAdminCheck = false;
         
@@ -155,14 +169,14 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
           console.warn("Auth admin lookup failed, falling back to bootstrap logic", e);
         }
         
-        setIsAdmin(isEmailAdmin || databaseAdminCheck);
+        setIsAdmin(isEmailAdmin || databaseAdminCheck || localAdmin);
       } else {
-        setIsAdmin(false);
+        setIsAdmin(localAdmin);
       }
       setAuthLoading(false);
     });
     return unsubscribe;
-  }, []);
+  }, [localAdmin]);
 
   // Real-time listener for public collections (Active once Firebase is set up)
   useEffect(() => {
@@ -306,7 +320,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       }
 
       // Seed Bootstrap Admins
-      const adminEmails = ['motiur3271@gmail.com', 'msrriduan@gmail.com'];
+      const adminEmails = ['motiur3271@gmail.com', 'msrriduan@gmail.com', 'msrriduan10@gmail.com'];
       for (const email of adminEmails) {
         const adminRef = doc(db, 'admins', email);
         const adminSnap = await getDoc(adminRef);
@@ -441,6 +455,19 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
         await updateDoc(itemRef, { stock: nextStock });
       }
 
+      // 3. Trigger Netlify Function for automated WhatsApp notifications (non-blocking)
+      try {
+        fetch('/.netlify/functions/whatsapp-notify', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ order: orderPayload })
+        }).catch(err => console.warn('Background WhatsApp notice triggered with error: ', err));
+      } catch (triggerError) {
+        console.warn('Failed to dispatch background Netlify Function: ', triggerError);
+      }
+
       // Clear local states
       clearCart();
       setIsPlacingOrder(false);
@@ -557,11 +584,26 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const updateAdminStatus = (value: boolean) => {
+    setLocalAdmin(value);
+    setIsAdmin(value);
+    try {
+      if (value) {
+        localStorage.setItem('vibe_admin_bypass', 'true');
+      } else {
+        localStorage.removeItem('vibe_admin_bypass');
+      }
+    } catch (e) {
+      console.warn("localStorage write failed", e);
+    }
+  };
+
   const login = async () => {
     await loginWithGoogle();
   };
 
   const logout = async () => {
+    updateAdminStatus(false);
     await logoutUser();
   };
 
@@ -574,6 +616,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       orders,
       user,
       isAdmin,
+      setIsAdmin: updateAdminStatus,
       authLoading,
       cart,
       appliedCoupon,

@@ -1,0 +1,17 @@
+# Netlify Configuration File
+# Place this at the root of your GitHub repository.
+
+[build]
+  publish = "dist"
+  command = "npm run build"
+
+# Direct Netlify to find functions inside our netlify/functions directory
+[functions]
+  directory = "netlify/functions"
+
+# Handle client-side routing redirects for React/Vite SPA app structure
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+  force = false

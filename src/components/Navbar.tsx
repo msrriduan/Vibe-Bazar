@@ -180,7 +180,7 @@ export default function Navbar({
               </div>
             ) : (
               <button
-                onClick={login}
+                onClick={() => setShowAdminPanel(true)}
                 className="flex h-10 items-center justify-center rounded-xl bg-gradient-to-r from-brand-orange to-brand-pink hover:opacity-95 text-white px-4 text-xs font-black uppercase tracking-wider transition-all gap-1.5 shadow-sm shadow-brand-pink/15"
               >
                 <LogIn className="h-4 w-4" />

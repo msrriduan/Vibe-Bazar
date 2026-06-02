@@ -5,6 +5,7 @@ import ProductCard from './components/ProductCard';
 import CheckoutModal from './components/CheckoutModal';
 import OrderTracking from './components/OrderTracking';
 import AdminPanel from './components/AdminPanel';
+import AdminLogin from './components/AdminLogin';
 import { Product } from './types';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -85,15 +86,26 @@ function StorefrontContent() {
       {/* Main Content Area */}
       <main className="flex-1">
         <AnimatePresence mode="wait">
-          {showAdminPanel && isAdmin ? (
-            <motion.div
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              key="admin"
-            >
-              <AdminPanel />
-            </motion.div>
+          {showAdminPanel ? (
+            isAdmin ? (
+              <motion.div
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                key="admin"
+              >
+                <AdminPanel />
+              </motion.div>
+            ) : (
+              <motion.div
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                key="admin-login"
+              >
+                <AdminLogin onClose={() => setShowAdminPanel(false)} />
+              </motion.div>
+            )
           ) : (
             <motion.div
               initial={{ opacity: 0 }}
