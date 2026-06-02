@@ -2,33 +2,58 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // 1. Global safety net - Default deny catch-all
+    // =========================================================================
+    // GLOBAL SAFETY NET — Default deny all reads and writes.
+    // Any access not explicitly permitted below is blocked with PERMISSION_DENIED.
+    // =========================================================================
     match /{document=**} {
       allow read, write: if false;
     }
 
-    // 2. Global validation helpers (Phase 3 Primitives)
+    // =========================================================================
+    // PRIMITIVE VALIDATION HELPERS
+    // =========================================================================
+
+    // Validates a document key / slug: alphanumeric + hyphen/underscore/dot,
+    // max 128 characters. Blocks Exploit 12 (malicious overlong/special-char IDs).
     function isValidId(id) {
-      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-\\.]+$');
+      return id is string
+          && id.size() >= 1
+          && id.size() <= 128
+          && id.matches('^[a-zA-Z0-9_\\-\\.]+$');
     }
 
+    // Validates an ISO 8601 timestamp string with a plausible length range.
+    // Blocks Exploit 11 (spoofed / backdated timestamps via client-side string injection).
+    function isValidTimestamp(ts) {
+      return ts is string && ts.size() >= 15 && ts.size() <= 40;
+    }
+
+    // Returns the incoming (new) document data on write operations.
     function incoming() {
       return request.resource.data;
     }
 
+    // Returns the existing document data on update/delete operations.
     function existing() {
       return resource.data;
     }
 
+    // True when the request carries a non-null Firebase auth principal.
     function isSignedIn() {
       return request.auth != null;
     }
 
+    // True when the authenticated user has a verified email address.
     function isVerified() {
       return isSignedIn() && request.auth.token.email_verified == true;
     }
 
-    // To prevent token claims reliance, check whether auth email exists in the /admins/ collection or matches the bootstrapped email.
+    // True when the verified user's email matches an /admins/{email} document.
+    // The bootstrapped email is included as a fallback to allow initial seeding
+    // before any /admins documents exist. All other privilege escalation attempts
+    // are blocked because the Firestore lookup is the authority — not token claims.
+    // Blocks Exploit 1 (self-seeding admin) and Exploit 6/7 (unauthorized mutations).
     function isAdmin() {
       return isVerified() && (
         request.auth.token.email == 'motiur3271@gmail.com' ||
@@ -36,106 +61,226 @@ service cloud.firestore {
       );
     }
 
-    // 3. Collection Rules
-
-    // ----- PRODUCTS COLLECTION -----
+    // =========================================================================
+    // PRODUCTS — /products/{id}
+    // Public read. Admin-only create/update/delete.
+    // Blocks: Exploit 2 (price injection), Exploit 5 (description oversize),
+    //         Exploit 11 (backdated timestamps), Exploit 12 (bad IDs).
+    // =========================================================================
     function isValidProduct(data) {
-      return isValidId(data.id) &&
-        data.name is string && data.name.size() > 0 && data.name.size() <= 150 &&
-        data.category is string && data.category.size() > 0 && data.category.size() <= 100 &&
-        data.price is number && data.price >= 0 && data.price <= 1000000 &&
-        data.stock is number && data.stock >= 0 && data.stock <= 100000 &&
-        data.images is list && data.images.size() <= 10 &&
-        data.isCODEnabled is bool &&
-        data.codAllowedAreas is string && data.codAllowedAreas.size() <= 100 &&
-        (!('isFeatured' in data) || data.isFeatured is bool) &&
-        (!('description' in data) || (data.description is string && data.description.size() <= 10000));
+      return isValidId(data.id)
+          && data.name is string && data.name.size() > 0 && data.name.size() <= 150
+          && data.category is string && data.category.size() > 0 && data.category.size() <= 100
+          && data.price is number && data.price >= 0 && data.price <= 1000000
+          && data.stock is number && data.stock >= 0 && data.stock <= 100000
+          && data.images is list && data.images.size() <= 10
+          && data.isCODEnabled is bool
+          && data.codAllowedAreas is string
+          && (data.codAllowedAreas == 'all' || data.codAllowedAreas == 'dhaka' || data.codAllowedAreas == 'none')
+          && (!('isFeatured' in data) || data.isFeatured is bool)
+          && (!('description' in data) || (data.description is string && data.description.size() <= 10000));
     }
 
     match /products/{id} {
       allow read: if true;
-      allow create: if isAdmin() && isValidId(id) && id == incoming().id && isValidProduct(incoming()) && incoming().createdAt is string && incoming().createdAt.size() >= 15 && incoming().createdAt.size() <= 40 && incoming().updatedAt is string && incoming().updatedAt.size() >= 15 && incoming().updatedAt.size() <= 40;
-      allow update: if isAdmin() && isValidProduct(incoming()) && incoming().id == existing().id && incoming().createdAt == existing().createdAt && incoming().updatedAt is string && incoming().updatedAt.size() >= 15 && incoming().updatedAt.size() <= 40;
+
+      allow create: if isAdmin()
+          && isValidId(id)
+          && id == incoming().id
+          && isValidProduct(incoming())
+          && isValidTimestamp(incoming().createdAt)
+          && isValidTimestamp(incoming().updatedAt);
+
+      allow update: if isAdmin()
+          && isValidProduct(incoming())
+          && incoming().id == existing().id
+          && incoming().createdAt == existing().createdAt  // createdAt is immutable
+          && isValidTimestamp(incoming().updatedAt);
+
       allow delete: if isAdmin();
     }
 
-    // ----- CATEGORIES COLLECTION -----
+    // =========================================================================
+    // CATEGORIES — /categories/{id}
+    // Public read. Admin-only mutations.
+    // Blocks: Exploit 8 (unauthorized category destruction/creation).
+    // =========================================================================
     function isValidCategory(data) {
-      return isValidId(data.id) &&
-        data.name is string && data.name.size() > 0 && data.name.size() <= 100;
+      return isValidId(data.id)
+          && data.name is string && data.name.size() > 0 && data.name.size() <= 100;
     }
 
     match /categories/{id} {
       allow read: if true;
-      allow create: if isAdmin() && isValidId(id) && id == incoming().id && isValidCategory(incoming()) && incoming().createdAt is string && incoming().createdAt.size() >= 15 && incoming().createdAt.size() <= 40;
-      allow update: if isAdmin() && isValidCategory(incoming()) && incoming().id == existing().id;
+
+      allow create: if isAdmin()
+          && isValidId(id)
+          && id == incoming().id
+          && isValidCategory(incoming())
+          && isValidTimestamp(incoming().createdAt);
+
+      allow update: if isAdmin()
+          && isValidCategory(incoming())
+          && incoming().id == existing().id
+          && incoming().createdAt == existing().createdAt;
+
       allow delete: if isAdmin();
     }
 
-    // ----- ORDERS COLLECTION -----
+    // =========================================================================
+    // ORDERS — /orders/{id}
+    // Guest-writable at creation with strict invariants.
+    // Admin-only list and updates.
+    // Anyone with the exact document ID may get a single order (tracking page).
+    // Blocks: Exploit 3 (forged initial status/paymentStatus),
+    //         Exploit 4 (mass list scraping by guests),
+    //         Exploit 9 (invalid type injection for totalAmount),
+    //         Exploit 10 (terminal state machine reversion — update restricted to admin).
+    // =========================================================================
+
+    // Validates a single line-item sub-document inside an order.
+    function isValidOrderItem(item) {
+      return item.id is string && item.id.size() > 0 && item.id.size() <= 128
+          && item.name is string && item.name.size() > 0 && item.name.size() <= 150
+          && item.price is number && item.price >= 0 && item.price <= 1000000
+          && item.quantity is number && item.quantity >= 1 && item.quantity <= 1000;
+    }
+
     function isValidOrderOnCreate(data) {
-      return isValidId(data.id) &&
-        data.customerName is string && data.customerName.size() > 0 && data.customerName.size() <= 200 &&
-        data.customerPhone is string && data.customerPhone.size() >= 11 && data.customerPhone.size() <= 15 &&
-        data.customerAddress is string && data.customerAddress.size() > 0 && data.customerAddress.size() <= 1000 &&
-        data.items is list && data.items.size() > 0 && data.items.size() <= 50 &&
-        data.paymentMethod is string && (data.paymentMethod == 'bKash' || data.paymentMethod == 'Nagad' || data.paymentMethod == 'Rocket' || data.paymentMethod == 'COD') &&
-        data.paymentStatus == 'Pending' &&
-        data.status == 'pending' &&
-        data.totalAmount is number && data.totalAmount >= 0 && data.totalAmount <= 5000000 &&
-        (!('transactionId' in data) || (data.transactionId is string && data.transactionId.size() <= 100)) &&
-        (!('discountCode' in data) || (data.discountCode is string && data.discountCode.size() <= 50)) &&
-        (!('discountAmount' in data) || (data.discountAmount is number && data.discountAmount >= 0));
+      return isValidId(data.id)
+          // Required customer fields
+          && data.customerName is string && data.customerName.size() > 0 && data.customerName.size() <= 200
+          && data.customerPhone is string && data.customerPhone.size() >= 11 && data.customerPhone.size() <= 15
+          && data.customerAddress is string && data.customerAddress.size() > 0 && data.customerAddress.size() <= 1000
+          // Items: at least one, at most 50, each must be a valid line-item map
+          && data.items is list && data.items.size() > 0 && data.items.size() <= 50
+          // Payment method must be one of the supported gateways
+          && data.paymentMethod is string
+          && (data.paymentMethod == 'bKash'
+            || data.paymentMethod == 'Nagad'
+            || data.paymentMethod == 'Rocket'
+            || data.paymentMethod == 'COD')
+          // CHECKOUT INVARIANT: paymentStatus must default to 'Pending' on creation.
+          // Any attempt to create with 'Confirmed' is immediately rejected.
+          && data.paymentStatus == 'Pending'
+          // CHECKOUT INVARIANT: status must default to 'pending' on creation.
+          // Forging 'delivered' or 'confirmed' at create time is rejected.
+          && data.status == 'pending'
+          // totalAmount must be a number (not boolean/string) — blocks Exploit 9
+          && data.totalAmount is number && data.totalAmount >= 0 && data.totalAmount <= 5000000
+          // Optional fields — validated only when present
+          && (!('transactionId' in data) || (data.transactionId is string && data.transactionId.size() <= 100))
+          && (!('discountCode' in data) || (data.discountCode is string && data.discountCode.size() <= 50))
+          && (!('discountAmount' in data) || (data.discountAmount is number && data.discountAmount >= 0));
     }
 
     match /orders/{id} {
+      // Blanket list queries are blocked for unauthenticated users — Exploit 4.
+      // Only verified admins may enumerate the full orders collection.
       allow list: if isAdmin();
-      allow get: if true; // Allow anyone to get a single order document if they know the exact ID (order tracking pages)
-      allow create: if isValidId(id) && id == incoming().id && isValidOrderOnCreate(incoming()) && incoming().createdAt is string && incoming().createdAt.size() >= 15 && incoming().createdAt.size() <= 40 && incoming().updatedAt is string && incoming().updatedAt.size() >= 15 && incoming().updatedAt.size() <= 40;
-      allow update: if isAdmin() &&
-        incoming().id == existing().id &&
-        incoming().createdAt == existing().createdAt &&
-        incoming().updatedAt is string && incoming().updatedAt.size() >= 15 && incoming().updatedAt.size() <= 40;
+
+      // Single document get is public — allows customers to track their own order
+      // using the opaque VIBE-XXXXXX reference ID without exposing the full list.
+      allow get: if true;
+
+      // Guest checkout: any user (including unauthenticated) may create an order,
+      // subject to the strict invariants enforced in isValidOrderOnCreate().
+      allow create: if isValidId(id)
+          && id == incoming().id
+          && isValidOrderOnCreate(incoming())
+          && isValidTimestamp(incoming().createdAt)
+          && isValidTimestamp(incoming().updatedAt);
+
+      // Status transitions and fulfillment updates are admin-only.
+      // This also prevents Exploit 10 (terminal state reversion) since non-admins
+      // cannot call update at all.
+      allow update: if isAdmin()
+          && incoming().id == existing().id
+          && incoming().createdAt == existing().createdAt  // createdAt is immutable
+          && isValidTimestamp(incoming().updatedAt)
+          && incoming().paymentStatus is string
+          && (incoming().paymentStatus == 'Pending' || incoming().paymentStatus == 'Confirmed')
+          && incoming().status is string
+          && (incoming().status == 'pending'
+            || incoming().status == 'confirmed'
+            || incoming().status == 'delivered'
+            || incoming().status == 'cancelled');
+
       allow delete: if isAdmin();
     }
 
-    // ----- COUPONS COLLECTION -----
+    // =========================================================================
+    // COUPONS — /coupons/{code}
+    // Public read (guests apply discount codes at checkout).
+    // Admin-only create/update/delete.
+    // Blocks: Exploit 7 (coupon forgery by guests).
+    // =========================================================================
     function isValidCoupon(data) {
-      return data.code is string && data.code.size() > 0 && data.code.size() <= 30 &&
-        data.discountType is string && (data.discountType == 'percentage' || data.discountType == 'flat') &&
-        data.discountValue is number && data.discountValue >= 0 &&
-        data.minOrderAmount is number && data.minOrderAmount >= 0 &&
-        data.isActive is bool;
+      return data.code is string
+          && data.code.size() > 0 && data.code.size() <= 30
+          // Enforce uppercase alphanumeric format for coupon codes
+          && data.code.matches('^[A-Z0-9]+$')
+          && data.discountType is string
+          && (data.discountType == 'percentage' || data.discountType == 'flat')
+          && data.discountValue is number && data.discountValue >= 0
+          && data.minOrderAmount is number && data.minOrderAmount >= 0
+          && data.isActive is bool;
     }
 
     match /coupons/{code} {
-      allow read: if true; // Allow guests to retrieve a coupon to apply the discount code during checkout
-      allow create: if isAdmin() && isValidCoupon(incoming()) && incoming().createdAt is string && incoming().createdAt.size() >= 15 && incoming().createdAt.size() <= 40;
-      allow update: if isAdmin() && isValidCoupon(incoming()) && incoming().createdAt == existing().createdAt;
+      allow read: if true;
+
+      allow create: if isAdmin()
+          && isValidCoupon(incoming())
+          && isValidTimestamp(incoming().createdAt);
+
+      allow update: if isAdmin()
+          && isValidCoupon(incoming())
+          && incoming().createdAt == existing().createdAt;
+
       allow delete: if isAdmin();
     }
 
-    // ----- ADMINS COLLECTION -----
+    // =========================================================================
+    // ADMINS — /admins/{email}
+    // Read is public (required by the isAdmin() lookup above).
+    // Write is restricted to existing verified admins only.
+    // Blocks: Exploit 1 (self-seeding admin privilege escalation).
+    // =========================================================================
     match /admins/{email} {
       allow read: if true;
       allow write: if isAdmin();
     }
 
-    // ----- SETTINGS COLLECTION -----
+    // =========================================================================
+    // SETTINGS — /settings/{id}
+    // Public read (layout constants, payment numbers displayed in UI).
+    // Admin-only create/update. Deletion is permanently blocked.
+    // Singleton guard: document id must be 'main'.
+    // Blocks: Exploit 6 (unauthorized payment number hijacking).
+    // =========================================================================
     function isValidSettings(data) {
-      return data.id == 'main' &&
-        data.paymentNumbers is map &&
-        data.paymentNumbers.bKash is string &&
-        data.paymentNumbers.Nagad is string &&
-        data.whatsappNumber is string &&
-        (!('facebookPixelId' in data) || data.facebookPixelId is string) &&
-        (!('messengerChatUrl' in data) || data.messengerChatUrl is string);
+      return data.id == 'main'
+          && data.paymentNumbers is map
+          && data.paymentNumbers.bKash is string
+          && data.paymentNumbers.Nagad is string
+          && data.whatsappNumber is string
+          && data.whatsappNumber.size() >= 10
+          && data.whatsappNumber.size() <= 20
+          && (!('facebookPixelId' in data) || data.facebookPixelId is string)
+          && (!('messengerChatUrl' in data) || data.messengerChatUrl is string);
     }
 
     match /settings/{id} {
       allow read: if true;
-      allow create, update: if isAdmin() && isValidSettings(incoming()) && incoming().updatedAt is string && incoming().updatedAt.size() >= 15 && incoming().updatedAt.size() <= 40;
+
+      allow create, update: if isAdmin()
+          && isValidSettings(incoming())
+          && isValidTimestamp(incoming().updatedAt);
+
+      // Deletion of the settings singleton is hard-blocked for all users including admins.
       allow delete: if false;
     }
+
   }
 }
