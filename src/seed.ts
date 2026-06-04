@@ -14,19 +14,27 @@ export const DEFAULT_SETTINGS: SystemSettings = {
 };
 
 export const SEED_CATEGORIES: Category[] = [
-  { id: 'all', name: 'All Products', createdAt: new Date().toISOString() },
-  { id: 'mens-fashion', name: "Men's Fashion", createdAt: new Date().toISOString() },
-  { id: 'womens-fashion', name: "Women's Fashion", createdAt: new Date().toISOString() },
-  { id: 'accessories', name: 'Accessories', createdAt: new Date().toISOString() },
-  { id: 'electronics', name: 'Electronics', createdAt: new Date().toISOString() },
-  { id: 'new-arrivals', name: 'New Arrivals', createdAt: new Date().toISOString() }
+  { id: 'all', name: 'All Products 🛍️', createdAt: new Date().toISOString() },
+  { id: 'panjabi', name: 'Premium Panjabi (পাঞ্জাবি)', createdAt: new Date().toISOString() },
+  { id: 'shirts', name: 'Premium Shirts (শার্ট)', createdAt: new Date().toISOString() },
+  { id: 'tshirts', name: 'T-Shirts & Polos (টি-শার্ট)', createdAt: new Date().toISOString() },
+  { id: 'pants-cargos', name: 'Cargo & Denim (প্যান্ট)', createdAt: new Date().toISOString() },
+  { id: 'kurtis-tops', name: 'Ladies Kurti & Tops (কুর্তি)', createdAt: new Date().toISOString() },
+  { id: 'three-pieces', name: 'Three-Pieces (থ্রি-পিস)', createdAt: new Date().toISOString() },
+  { id: 'sarees', name: 'Traditional Sarees (শাড়ি)', createdAt: new Date().toISOString() },
+  { id: 'modest-wear', name: 'Abaya & Hijab (হিজাব-আবায়া)', createdAt: new Date().toISOString() },
+  { id: 'winter-hoodies', name: 'Winter & Hoodies (উইন্টার)', createdAt: new Date().toISOString() },
+  { id: 'sunglasses', name: 'Sunglasses & Eyewear (সানগ্লাস)', createdAt: new Date().toISOString() },
+  { id: 'bags-wallets', name: 'Bags & Wallets (ব্যাগ ও ওয়ালেট)', createdAt: new Date().toISOString() },
+  { id: 'watches', name: 'Watches & Accessories (ঘড়ি)', createdAt: new Date().toISOString() },
+  { id: 'gadgets', name: 'Gadgets & Electronics (গ্যাজেটস)', createdAt: new Date().toISOString() }
 ];
 
 export const SEED_PRODUCTS: Product[] = [
   {
     id: 'vib-001',
     name: "Classic Over-Sized Black Hood",
-    category: 'mens-fashion',
+    category: 'winter-hoodies',
     price: 1250,
     stock: 25,
     images: [
@@ -43,7 +51,7 @@ export const SEED_PRODUCTS: Product[] = [
   {
     id: 'vib-002',
     name: "Aura Premium Cotton Panjabi",
-    category: 'mens-fashion',
+    category: 'panjabi',
     price: 2450,
     stock: 12,
     images: [
@@ -60,7 +68,7 @@ export const SEED_PRODUCTS: Product[] = [
   {
     id: 'vib-007',
     name: "Anime Print Graphic Drop-Shoulder Tee",
-    category: 'mens-fashion',
+    category: 'tshirts',
     price: 850,
     stock: 35,
     images: [
@@ -77,7 +85,7 @@ export const SEED_PRODUCTS: Product[] = [
   {
     id: 'vib-008',
     name: "Dhaka Retro Noir Cargo Pants",
-    category: 'mens-fashion',
+    category: 'pants-cargos',
     price: 1550,
     stock: 18,
     images: [
@@ -94,7 +102,7 @@ export const SEED_PRODUCTS: Product[] = [
   {
     id: 'vib-004',
     name: "Luxe Linen Kurti",
-    category: 'womens-fashion',
+    category: 'kurtis-tops',
     price: 1850,
     stock: 15,
     images: [
@@ -111,7 +119,7 @@ export const SEED_PRODUCTS: Product[] = [
   {
     id: 'vib-009',
     name: "Akiara Pleated High-Waist Trousers",
-    category: 'womens-fashion',
+    category: 'pants-cargos',
     price: 1250,
     stock: 20,
     images: [
@@ -127,7 +135,7 @@ export const SEED_PRODUCTS: Product[] = [
   {
     id: 'vib-010',
     name: "Ethereal Pastel Cropped Cardigan",
-    category: 'womens-fashion',
+    category: 'winter-hoodies',
     price: 1150,
     stock: 15,
     images: [
@@ -143,7 +151,7 @@ export const SEED_PRODUCTS: Product[] = [
   {
     id: 'vib-003',
     name: "Cyberpunk Glow Sunset Aviators",
-    category: 'accessories',
+    category: 'sunglasses',
     price: 680,
     stock: 45,
     images: [
@@ -160,7 +168,7 @@ export const SEED_PRODUCTS: Product[] = [
   {
     id: 'vib-011',
     name: "Vibe-Check Retro Beanie",
-    category: 'accessories',
+    category: 'winter-hoodies',
     price: 420,
     stock: 50,
     images: [
@@ -176,7 +184,7 @@ export const SEED_PRODUCTS: Product[] = [
   {
     id: 'vib-012',
     name: "Urban Nomad Canvas Tote Bag",
-    category: 'accessories',
+    category: 'bags-wallets',
     price: 480,
     stock: 40,
     images: [
@@ -192,7 +200,7 @@ export const SEED_PRODUCTS: Product[] = [
   {
     id: 'vib-013',
     name: "Sleek Silver Cuban Link Chain (2-Pack)",
-    category: 'accessories',
+    category: 'watches',
     price: 550,
     stock: 30,
     images: [
@@ -208,7 +216,7 @@ export const SEED_PRODUCTS: Product[] = [
   {
     id: 'vib-005',
     name: "SoundPods Pro Noise Cancelling Earbuds",
-    category: 'electronics',
+    category: 'gadgets',
     price: 3200,
     stock: 8,
     images: [
@@ -224,7 +232,7 @@ export const SEED_PRODUCTS: Product[] = [
   {
     id: 'vib-006',
     name: "Classic Minimalist Chrono Mesh Watch",
-    category: 'new-arrivals',
+    category: 'watches',
     price: 3800,
     stock: 5,
     images: [
@@ -240,7 +248,7 @@ export const SEED_PRODUCTS: Product[] = [
   {
     id: 'vib-014',
     name: "CyberGlow Mechanical Keyboard (65% Custom)",
-    category: 'electronics',
+    category: 'gadgets',
     price: 4800,
     stock: 7,
     images: [
@@ -257,7 +265,7 @@ export const SEED_PRODUCTS: Product[] = [
   {
     id: 'vib-015',
     name: "RGB Ambient Neon Desk Strip",
-    category: 'electronics',
+    category: 'gadgets',
     price: 950,
     stock: 25,
     images: [
@@ -267,6 +275,71 @@ export const SEED_PRODUCTS: Product[] = [
     codAllowedAreas: 'all',
     isFeatured: false,
     description: "Smart room decor led neon strip with responsive music-sync controllers. Features App and Bluetooth remote control, 16 million colors, and dynamic color segments for the ultimate Gen-Z gaming or content creation desk setup.",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  },
+  {
+    id: 'vib-016',
+    name: "Premium Casual Cotton-Linen Mandarin Shirt",
+    category: 'shirts',
+    price: 1350,
+    stock: 28,
+    images: [
+      'https://images.unsplash.com/photo-1596755094514-f87e34085b2c?auto=format&fit=crop&w=600&q=80',
+      'https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?auto=format&fit=crop&w=600&q=80'
+    ],
+    isCODEnabled: true,
+    codAllowedAreas: 'all',
+    isFeatured: true,
+    description: "Upgrade your casual elegance with our Premium Mandarin Collar Shirt. Handcrafted from light, ultra-breathable linen cotton fabric. Tailored slim fit with natural wooden buttons — the absolute ultimate choice for Bangladeshi summers.",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  },
+  {
+    id: 'vib-017',
+    name: "Aura Blooming Georgette Designer Three-Piece",
+    category: 'three-pieces',
+    price: 3200,
+    stock: 14,
+    images: [
+      'https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=600&q=80'
+    ],
+    isCODEnabled: true,
+    codAllowedAreas: 'all',
+    isFeatured: true,
+    description: "A gorgeous semi-stitched luxury Three-Piece crafted from premium soft Georgette fabric. Adorned with delicate floral embroidery, gold zari stone works, and a matching pure Chiffon dupatta with printed borders.",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  },
+  {
+    id: 'vib-018',
+    name: "Dallia Hand-Woven Rajshahi Silk Saree",
+    category: 'sarees',
+    price: 4500,
+    stock: 8,
+    images: [
+      'https://images.unsplash.com/photo-1610030469668-93535c17b6b3?auto=format&fit=crop&w=600&q=80'
+    ],
+    isCODEnabled: true,
+    codAllowedAreas: 'all',
+    isFeatured: true,
+    description: "Celebrate luxury with our signature hand-woven silk Saree from Rajshahi. Features majestic golden thread zari borders and intricate floral details. Breathable shimmering style suitable for weddings and premium corporate assemblies.",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  },
+  {
+    id: 'vib-019',
+    name: "Amara Dubai Cherry Georgette Abaya Set",
+    category: 'modest-wear',
+    price: 2750,
+    stock: 16,
+    images: [
+      'https://images.unsplash.com/photo-1585487000160-6ebcfceb0d03?auto=format&fit=crop&w=600&q=80'
+    ],
+    isCODEnabled: true,
+    codAllowedAreas: 'all',
+    isFeatured: true,
+    description: "Bespoke Islamic long sleeve loose fit Abaya featuring handmaded stonework. Includes a matching dual-tone premium comfort summer hijab. Sewn from highly-durable, premium cherry georgette which resists wrinkling.",
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   }

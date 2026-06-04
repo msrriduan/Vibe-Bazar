@@ -3,6 +3,7 @@ import {
   collection, 
   doc, 
   getDoc, 
+  getDocs,
   getDocFromServer,
   setDoc, 
   onSnapshot, 
@@ -97,6 +98,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   });
   const [authLoading, setAuthLoading] = useState<boolean>(true);
   const [isPlacingOrder, setIsPlacingOrder] = useState<boolean>(false);
+  const [categoriesLoaded, setCategoriesLoaded] = useState<boolean>(false);
+  const [productsLoaded, setProductsLoaded] = useState<boolean>(false);
   
   // Cart state - persistent via localStorage
   const [cart, setCart] = useState<CartItem[]>(() => {
@@ -194,6 +197,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
         return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
       });
       setProducts(items);
+      setProductsLoaded(true);
     }, (error) => {
       handleFirestoreError(error, OperationType.GET, pathProducts);
     });
@@ -205,6 +209,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
         items.push(doc.data() as Category);
       });
       setCategories(items);
+      setCategoriesLoaded(true);
     }, (error) => {
       handleFirestoreError(error, OperationType.GET, pathCategories);
     });
@@ -338,6 +343,112 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       handleFirestoreError(error, OperationType.WRITE, 'seeding');
     }
   };
+
+  // Automatically migrate active categories to premium bilingual schema or auto-seed empty databases
+  useEffect(() => {
+    if (!isAdmin || !categoriesLoaded) return;
+    let active = true;
+    const runAutoUpgradeSchema = async () => {
+      try {
+        const hasOldCategory = categories.some(c => c.id === 'mens-fashion' || c.id === 'womens-fashion');
+        
+        if (categories.length > 0 && hasOldCategory) {
+          console.log("Auto-upgrading e-commerce categories and mapping collections...");
+          
+          // 1. Create new categories
+          for (const cat of SEED_CATEGORIES) {
+            await setDoc(doc(db, 'categories', cat.id), cat);
+          }
+
+          // 2. Migrate any products on old categories
+          const pathProducts = 'products';
+          const productsSnap = await getDocs(collection(db, pathProducts));
+          if (!active) return;
+          
+          for (const pDoc of productsSnap.docs) {
+            const prod = pDoc.data();
+            let newCat = prod.category;
+            if (prod.category === 'mens-fashion') {
+              if (pDoc.id === 'vib-002') newCat = 'panjabi';
+              else if (pDoc.id === 'vib-007') newCat = 'tshirts';
+              else if (pDoc.id === 'vib-008') newCat = 'pants-cargos';
+              else newCat = 'shirts';
+            } else if (prod.category === 'womens-fashion') {
+              if (pDoc.id === 'vib-004') newCat = 'kurtis-tops';
+              else if (pDoc.id === 'vib-009') newCat = 'pants-cargos';
+              else if (pDoc.id === 'vib-010') newCat = 'winter-hoodies';
+              else newCat = 'kurtis-tops';
+            } else if (prod.category === 'accessories') {
+              if (pDoc.id === 'vib-003') newCat = 'sunglasses';
+              else if (pDoc.id === 'vib-011') newCat = 'winter-hoodies';
+              else if (pDoc.id === 'vib-012') newCat = 'bags-wallets';
+              else newCat = 'watches';
+            } else if (prod.category === 'electronics') {
+              newCat = 'gadgets';
+            } else if (prod.category === 'new-arrivals') {
+              newCat = 'watches';
+            }
+
+            if (newCat !== prod.category) {
+              await updateDoc(doc(db, 'products', pDoc.id), { category: newCat });
+            }
+          }
+
+          // 3. Delete old categories
+          const oldCategoryIds = ['mens-fashion', 'womens-fashion', 'accessories', 'electronics', 'new-arrivals'];
+          for (const oldId of oldCategoryIds) {
+            await deleteDoc(doc(db, 'categories', oldId));
+          }
+
+          // 4. Set setting defaults
+          await setDoc(doc(db, 'settings', 'main'), DEFAULT_SETTINGS, { merge: true });
+
+          // 5. Seed any product that doesn't exist
+          for (const prod of SEED_PRODUCTS) {
+            const pRef = doc(db, 'products', prod.id);
+            const pSnap = await getDoc(pRef);
+            if (!pSnap.exists()) {
+              await setDoc(pRef, prod);
+            }
+          }
+
+          console.log("Database schema successfully upgraded to premium Bangladeshi categories!");
+        } else if (categories.length === 0) {
+          console.log("Empty database detected. Running initial seeding...");
+          await seedDatabase();
+        }
+      } catch (error) {
+        console.warn("Auto-upgrade schema failed silently:", error);
+      }
+    };
+
+    runAutoUpgradeSchema();
+    return () => {
+      active = false;
+    };
+  }, [categories, isAdmin, categoriesLoaded]);
+
+  // Automatically add any missing seed products to ensure every category has at least one demo item
+  useEffect(() => {
+    if (!isAdmin || !productsLoaded || products.length === 0) return;
+    
+    const seedMissingProducts = async () => {
+      try {
+        const missing = SEED_PRODUCTS.filter(sp => !products.some(p => p.id === sp.id));
+        if (missing.length > 0) {
+          console.log(`Auto-seeding ${missing.length} missing demo products...`);
+          for (const prod of missing) {
+            await setDoc(doc(db, 'products', prod.id), prod);
+          }
+          console.log("Auto-seeding products completed!");
+        }
+      } catch (err) {
+        console.warn("Silent failure seeding missing products:", err);
+      }
+    };
+
+    seedMissingProducts();
+  }, [products, isAdmin, productsLoaded]);
 
   const restoreDatabaseFromBackup = async (backup: any) => {
     try {
