@@ -34,9 +34,9 @@ interface ShopContextType {
   toggleTheme: () => void;
   
   // Cart Actions
-  addToCart: (product: Product, qty?: number) => void;
-  removeFromCart: (productId: string) => void;
-  updateCartQuantity: (productId: string, qty: number) => void;
+  addToCart: (product: Product, qty?: number, size?: string, color?: string) => void;
+  removeFromCart: (productId: string, size?: string, color?: string) => void;
+  updateCartQuantity: (productId: string, qty: number, size?: string, color?: string) => void;
   clearCart: () => void;
   applyCouponCode: (code: string) => { success: boolean; message: string };
   removeAppliedCoupon: () => void;
@@ -247,7 +247,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   // Admin and Real-time listener for customer reviews and system-wide Orders!
   // This listener attaches only if user is an authorized Admin.
   useEffect(() => {
-    if (!isAdmin) {
+    if (!isAdmin || !user) {
       setOrders([]);
       return;
     }
@@ -271,7 +271,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     return () => {
       unsubOrders();
     };
-  }, [isAdmin]);
+  }, [isAdmin, user]);
 
   // Seeding mechanism triggerable by Admin or auto-seeded if blank
   const seedDatabase = async () => {
@@ -346,7 +346,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
 
   // Automatically migrate active categories to premium bilingual schema or auto-seed empty databases
   useEffect(() => {
-    if (!isAdmin || !categoriesLoaded) return;
+    if (!isAdmin || !user || !categoriesLoaded) return;
     let active = true;
     const runAutoUpgradeSchema = async () => {
       try {
@@ -426,11 +426,11 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     return () => {
       active = false;
     };
-  }, [categories, isAdmin, categoriesLoaded]);
+  }, [categories, isAdmin, user, categoriesLoaded]);
 
   // Automatically add any missing seed products to ensure every category has at least one demo item
   useEffect(() => {
-    if (!isAdmin || !productsLoaded || products.length === 0) return;
+    if (!isAdmin || !user || !productsLoaded || products.length === 0) return;
     
     const seedMissingProducts = async () => {
       try {
@@ -448,7 +448,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     };
 
     seedMissingProducts();
-  }, [products, isAdmin, productsLoaded]);
+  }, [products, isAdmin, user, productsLoaded]);
 
   const restoreDatabaseFromBackup = async (backup: any) => {
     try {
@@ -503,25 +503,24 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   };
 
   // Cart operations
-  const addToCart = (product: Product, qty: number = 1) => {
+  const addToCart = (product: Product, qty: number = 1, size?: string, color?: string) => {
     setCart(prev => {
-      const existing = prev.find(item => item.product.id === product.id);
+      const existing = prev.find(item => item.product.id === product.id && item.size === size && item.color === color);
       if (existing) {
-        const nextQty = Math.min(existing.quantity + qty, product.stock);
-        return prev.map(item => item.product.id === product.id ? { ...item, quantity: nextQty } : item);
+        const nextQty = Math.max(1, existing.quantity + qty); // Free stock ceiling can be unchecked as requested to remove strict stock limit indicators
+        return prev.map(item => (item.product.id === product.id && item.size === size && item.color === color) ? { ...item, quantity: nextQty } : item);
       }
-      return [...prev, { product, quantity: Math.min(qty, product.stock) }];
+      return [...prev, { product, quantity: qty, size, color }];
     });
   };
 
-  const removeFromCart = (productId: string) => {
-    setCart(prev => prev.filter(item => item.product.id !== productId));
+  const removeFromCart = (productId: string, size?: string, color?: string) => {
+    setCart(prev => prev.filter(item => !(item.product.id === productId && (!size || item.size === size) && (!color || item.color === color))));
   };
 
-  const updateCartQuantity = (productId: string, qty: number) => {
-    const limits = products.find(p => p.id === productId)?.stock || 10;
-    const finalQty = Math.max(1, Math.min(qty, limits));
-    setCart(prev => prev.map(item => item.product.id === productId ? { ...item, quantity: finalQty } : item));
+  const updateCartQuantity = (productId: string, qty: number, size?: string, color?: string) => {
+    const finalQty = Math.max(1, qty);
+    setCart(prev => prev.map(item => (item.product.id === productId && (!size || item.size === size) && (!color || item.color === color)) ? { ...item, quantity: finalQty } : item));
   };
 
   const clearCart = () => {
@@ -582,7 +581,9 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       id: item.product.id,
       name: item.product.name,
       price: item.product.price,
-      quantity: item.quantity
+      quantity: item.quantity,
+      size: item.size,
+      color: item.color
     }));
 
     const orderPayload: Order = {

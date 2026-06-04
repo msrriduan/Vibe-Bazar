@@ -7,10 +7,11 @@ import { ShoppingBag, ChevronLeft, ChevronRight, Check, MapPin } from 'lucide-re
 interface ProductCardProps {
   product: Product;
   onOpenCheckoutImmediate: (product: Product) => void;
+  isCompact?: boolean;
   key?: string;
 }
 
-export default function ProductCard({ product, onOpenCheckoutImmediate }: ProductCardProps) {
+export default function ProductCard({ product, onOpenCheckoutImmediate, isCompact = false }: ProductCardProps) {
   const { addToCart } = useShop();
   const [currentImgIndex, setCurrentImgIndex] = useState(0);
   const [addedTemp, setAddedTemp] = useState(false);
@@ -39,16 +40,21 @@ export default function ProductCard({ product, onOpenCheckoutImmediate }: Produc
     onOpenCheckoutImmediate(product);
   };
 
+  const handleViewDetails = () => {
+    window.location.hash = `#product-${product.id}`;
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '-40px' }}
       transition={{ duration: 0.4 }}
-      className="group overflow-hidden rounded-[16px] border border-slate-100 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-4 h-full flex flex-col shadow-sm hover:shadow-brand-pink/5 hover:border-brand-pink/40 hover:-translate-y-1 transition-all font-sans relative"
+      onClick={handleViewDetails}
+      className={`group overflow-hidden rounded-[16px] border border-slate-100 dark:border-zinc-800 bg-white dark:bg-zinc-950 ${isCompact ? 'p-3' : 'p-4'} h-full flex flex-col shadow-sm hover:shadow-brand-pink/5 hover:border-brand-pink/40 hover:-translate-y-1 transition-all font-sans relative cursor-pointer`}
     >
       {/* Dynamic badges */}
-      <div className="absolute left-6 top-6 z-10 flex flex-col gap-1.5 pointer-events-none">
+      <div className={`absolute ${isCompact ? 'left-4 top-4' : 'left-6 top-6'} z-10 flex flex-col gap-1.5 pointer-events-none`}>
         {product.isFeatured && (
           <span className="rounded-lg bg-gradient-to-r from-brand-orange to-brand-pink px-2 py-1 font-display text-[10px] font-black text-white uppercase tracking-wider shadow-sm animate-pulse">
             ★ Hot
@@ -65,7 +71,7 @@ export default function ProductCard({ product, onOpenCheckoutImmediate }: Produc
         ) : null}
       </div>
 
-      <div className="absolute right-6 top-6 z-10 pointer-events-none">
+      <div className={`absolute ${isCompact ? 'right-4 top-4' : 'right-6 top-6'} z-10 pointer-events-none`}>
         {product.isCODEnabled ? (
           <span className="rounded-lg bg-emerald-500 text-[9px] font-black text-white px-2 py-1 uppercase tracking-wider shadow-xs glow-green">
             COD OK
@@ -78,7 +84,7 @@ export default function ProductCard({ product, onOpenCheckoutImmediate }: Produc
       </div>
 
       {/* Image Gallery */}
-      <div className="relative w-full h-44 bg-slate-100 dark:bg-zinc-900 rounded-2xl mb-4 overflow-hidden group-hover:opacity-95 transition-opacity">
+      <div className={`relative w-full ${isCompact ? 'h-32 sm:h-36' : 'h-44'} bg-slate-100 dark:bg-zinc-900 rounded-2xl ${isCompact ? 'mb-2.5' : 'mb-4'} overflow-hidden group-hover:opacity-95 transition-opacity`}>
         <img
           src={product.images[currentImgIndex]}
           alt={product.name}
@@ -125,12 +131,12 @@ export default function ProductCard({ product, onOpenCheckoutImmediate }: Produc
             {product.category.replace('-', ' ')}
           </span>
           {/* Title */}
-          <h3 className="text-lg font-black mt-2 text-slate-900 dark:text-white capitalize group-hover:text-brand-pink dark:group-hover:text-brand-orange transition-colors line-clamp-1">
+          <h3 className={`${isCompact ? 'text-sm sm:text-base' : 'text-lg'} font-black mt-2 text-slate-900 dark:text-white capitalize group-hover:text-brand-pink dark:group-hover:text-brand-orange transition-colors line-clamp-1`}>
             {product.name}
           </h3>
           {/* Description */}
           {product.description && (
-            <p className="font-sans text-xs text-zinc-550 dark:text-zinc-400 mt-1 line-clamp-2 leading-relaxed">
+            <p className={`font-sans text-xs text-zinc-550 dark:text-zinc-400 mt-1 ${isCompact ? 'line-clamp-1' : 'line-clamp-2'} leading-relaxed`}>
               {product.description}
             </p>
           )}
@@ -144,11 +150,11 @@ export default function ProductCard({ product, onOpenCheckoutImmediate }: Produc
           )}
         </div>
 
-        <div className="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-900 flex items-center justify-between gap-2">
+        <div className={`${isCompact ? 'mt-2.5 pt-2' : 'mt-4 pt-3'} border-t border-zinc-100 dark:border-zinc-900 flex items-center justify-between gap-2`}>
           {/* Price */}
           <div className="flex flex-col">
             <span className="text-[9px] uppercase tracking-wider text-slate-400 font-bold">Price</span>
-            <span className="font-mono text-lg font-black text-slate-900 dark:text-white">
+            <span className={`font-mono ${isCompact ? 'text-[15px]' : 'text-lg'} font-black text-slate-900 dark:text-white`}>
               BDT {product.price}
             </span>
           </div>
@@ -159,21 +165,21 @@ export default function ProductCard({ product, onOpenCheckoutImmediate }: Produc
             <button
               onClick={handleAddToCart}
               disabled={product.stock === 0}
-              className={`flex h-9 w-9 items-center justify-center rounded-xl border transition-all ${
+              className={`flex ${isCompact ? 'h-8 w-8 rounded-lg' : 'h-9 w-9 rounded-xl'} items-center justify-center border transition-all ${
                 addedTemp
                   ? 'bg-green-500 border-green-500 text-white shadow-md shadow-green-500/25'
                   : 'border-slate-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:border-brand-pink dark:hover:border-brand-orange hover:text-brand-pink'
               } disabled:opacity-30`}
               title="Add to shopping cart"
             >
-              {addedTemp ? <Check className="h-4 w-4" /> : <ShoppingBag className="h-4 w-4" />}
+              {addedTemp ? <Check className="h-3.5 w-3.5" /> : <ShoppingBag className="h-3.5 w-3.5" />}
             </button>
 
             {/* Buy Now button */}
             <button
               onClick={handleBuyNow}
               disabled={product.stock === 0}
-              className="px-4 h-9 bg-gradient-to-r from-brand-orange to-brand-pink hover:opacity-95 text-white font-display text-xs font-black uppercase tracking-wider rounded-xl transition-all disabled:opacity-35 shadow-md shadow-brand-pink/15 flex items-center gap-1"
+              className={`${isCompact ? 'px-2.5 h-8 rounded-lg text-[10px]' : 'px-4 h-9 rounded-xl text-xs'} bg-gradient-to-r from-brand-orange to-brand-pink hover:opacity-95 text-white font-display font-black uppercase tracking-wider transition-all disabled:opacity-35 shadow-md shadow-brand-pink/15 flex items-center gap-1`}
             >
               <span>Buy Now</span>
             </button>

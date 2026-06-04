@@ -23,9 +23,11 @@ interface CheckoutModalProps {
   isOpen: boolean;
   onClose: () => void;
   immediateProduct?: Product | null; // For instant "Buy Now" checkout bypassing standard cart
+  immediateSize?: string;            // Selected size for immediate checkout
+  immediateColor?: string;           // Selected color for immediate checkout
 }
 
-export default function CheckoutModal({ isOpen, onClose, immediateProduct }: CheckoutModalProps) {
+export default function CheckoutModal({ isOpen, onClose, immediateProduct, immediateSize, immediateColor }: CheckoutModalProps) {
   const { 
     cart, 
     settings, 
@@ -47,7 +49,7 @@ export default function CheckoutModal({ isOpen, onClose, immediateProduct }: Che
 
   // Determine active check-out items
   const activeItems: CartItem[] = immediateProduct 
-    ? [{ product: immediateProduct, quantity: 1 }]
+    ? [{ product: immediateProduct, quantity: 1, size: immediateSize, color: immediateColor }]
     : cart;
 
   // Cart pricing calculation
@@ -133,7 +135,16 @@ export default function CheckoutModal({ isOpen, onClose, immediateProduct }: Che
   const triggerWhatsAppRedirect = () => {
     if (!placedReceipt) return;
 
-    const itemsSummary = placedReceipt.items.map(item => `• ${item.name} x${item.quantity}`).join('\n');
+    const itemsSummary = placedReceipt.items.map(item => {
+      let optStr = '';
+      if (item.size || item.color) {
+        const opts = [];
+        if (item.size) opts.push(`Size: ${item.size}`);
+        if (item.color) opts.push(`Color: ${item.color}`);
+        optStr = ` [${opts.join(', ')}]`;
+      }
+      return `• ${item.name}${optStr} x${item.quantity}`;
+    }).join('\n');
     const invoiceString = `Hello Vibebazar team! I have placed an order. Details below:\n\n` +
       `📦 *ORDER ID:* ${placedReceipt.id}\n` +
       `👤 *Customer Name:* ${placedReceipt.customerName}\n` +
@@ -400,15 +411,23 @@ export default function CheckoutModal({ isOpen, onClose, immediateProduct }: Che
                   {/* Cart review */}
                   <div className="flex-1 max-h-48 overflow-y-auto space-y-3 pr-1">
                     {activeItems.map((item) => (
-                      <div key={item.product.id} className="flex gap-3 text-xs leading-tight">
+                      <div key={`${item.product.id}-${item.size || ''}-${item.color || ''}`} className="flex gap-3 text-xs leading-tight">
                         <img
                           src={item.product.images[0]}
                           alt={item.product.name}
-                          className="h-10 w-10 rounded-lg object-cover border border-zinc-200 dark:border-zinc-800"
+                          className="h-10 w-10 rounded-lg object-cover border border-zinc-200 dark:border-zinc-805"
                         />
                         <div className="flex-1 min-w-0">
                           <p className="font-display font-medium text-zinc-950 dark:text-white truncate">{item.product.name}</p>
-                          <p className="text-zinc-400 font-mono mt-0.5">{item.quantity} x BDT {item.product.price}</p>
+                          <div className="flex flex-wrap gap-1.5 items-center mt-0.5 text-zinc-400 font-mono">
+                            <span>{item.quantity} x BDT {item.product.price}</span>
+                            {item.size && (
+                              <span className="bg-brand-pink/10 text-brand-pink text-[10px] px-1.5 py-0.5 rounded border border-brand-pink/20 font-bold leading-none">Size: {item.size}</span>
+                            )}
+                            {item.color && (
+                              <span className="bg-brand-orange/10 text-brand-orange text-[10px] px-1.5 py-0.5 rounded border border-brand-orange/20 font-bold leading-none">Color: {item.color}</span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     ))}

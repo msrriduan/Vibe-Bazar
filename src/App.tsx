@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ShopProvider, useShop } from './context/ShopContext';
 import Navbar from './components/Navbar';
 import ProductCard from './components/ProductCard';
+import ProductDetails from './components/ProductDetails';
 import CheckoutModal from './components/CheckoutModal';
 import OrderTracking from './components/OrderTracking';
 import AdminPanel from './components/AdminPanel';
@@ -32,7 +33,28 @@ function StorefrontContent() {
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [isTrackingOpen, setIsTrackingOpen] = useState(false);
   const [immediateCheckoutProduct, setImmediateCheckoutProduct] = useState<Product | null>(null);
+  const [immediateSize, setImmediateSize] = useState<string>('');
+  const [immediateColor, setImmediateColor] = useState<string>('');
   const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [viewProductId, setViewProductId] = useState<string | null>(null);
+
+  // Shareover Hash Routing synchronization
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash;
+      if (hash.startsWith('#product-')) {
+        const pId = hash.replace('#product-', '');
+        setViewProductId(pId);
+        setShowAdminPanel(false); // Close Admin screen when switching to item details
+      } else {
+        setViewProductId(null);
+      }
+    };
+
+    handleHashChange();
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
 
   // Filtered Products
   const filteredProducts = products.filter((prod) => {
@@ -49,15 +71,44 @@ function StorefrontContent() {
   const normalProducts = filteredProducts.filter(p => !p.isFeatured || p.stock === 0);
 
   // Trigger Immediate "Buy Now" Checkout
-  const handleOpenCheckoutImmediate = (product: Product) => {
+  const handleOpenCheckoutImmediate = (product: Product, size?: string, color?: string) => {
     setImmediateCheckoutProduct(product);
+    setImmediateSize(size || '');
+    setImmediateColor(color || '');
     setIsCheckoutOpen(true);
   };
+
+  // Carousel Auto-scroll and pause-on-hover setup
+  const carouselRef = useRef<HTMLDivElement>(null);
+  const [isCarouselHovered, setIsCarouselHovered] = useState(false);
+
+  useEffect(() => {
+    if (!featuredProducts.length || !carouselRef.current || isCarouselHovered) return;
+    
+    const interval = setInterval(() => {
+      const container = carouselRef.current;
+      if (!container) return;
+      
+      const maxScrollLeft = container.scrollWidth - container.clientWidth;
+      if (container.scrollLeft >= maxScrollLeft - 10) {
+        // Reset to beginning smoothly
+        container.scrollTo({ left: 0, behavior: 'smooth' });
+      } else {
+        // Scroll by one item
+        const itemWidth = container.firstElementChild?.clientWidth || 210;
+        container.scrollBy({ left: itemWidth + 16, behavior: 'smooth' }); // item width + spacing gap
+      }
+    }, 4000); // swipe every 4 seconds
+
+    return () => clearInterval(interval);
+  }, [featuredProducts, isCarouselHovered]);
 
   // Close Checkout Modal & reset direct-buy state
   const handleCloseCheckout = () => {
     setIsCheckoutOpen(false);
     setImmediateCheckoutProduct(null);
+    setImmediateSize('');
+    setImmediateColor('');
   };
 
   // Simulated Facebook Pixel and Google Analytics Logging
@@ -106,6 +157,40 @@ function StorefrontContent() {
                 <AdminLogin onClose={() => setShowAdminPanel(false)} />
               </motion.div>
             )
+          ) : viewProductId ? (
+            (() => {
+              const viewProduct = products.find(p => p.id === viewProductId);
+              if (!viewProduct) {
+                return (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    key="not-found"
+                    className="mx-auto max-w-xl text-center py-16"
+                  >
+                    <p className="font-display font-black text-zinc-550 uppercase">Product not found</p>
+                    <button onClick={() => { window.location.hash = ''; }} className="mt-4 px-4 py-2 bg-brand-pink text-white text-xs font-bold rounded-xl uppercase">
+                      Back to Home
+                    </button>
+                  </motion.div>
+                );
+              }
+              return (
+                <motion.div
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  key="product-details-view"
+                >
+                  <ProductDetails
+                    product={viewProduct}
+                    onBack={() => { window.location.hash = ''; }}
+                    onOpenCheckoutImmediate={handleOpenCheckoutImmediate}
+                  />
+                </motion.div>
+              );
+            })()
           ) : (
             <motion.div
               initial={{ opacity: 0 }}
@@ -235,12 +320,18 @@ function StorefrontContent() {
                       </div>
                       
                       {/* Carousel sliding view */}
-                      <div className="flex overflow-x-auto gap-6 pb-6 pt-1 snap-x scrollbar-none -mx-4 px-4 sm:mx-0 sm:px-0">
+                      <div 
+                        ref={carouselRef}
+                        onMouseEnter={() => setIsCarouselHovered(true)}
+                        onMouseLeave={() => setIsCarouselHovered(false)}
+                        className="flex overflow-x-auto gap-4 pb-6 pt-1 snap-x scrollbar-none -mx-4 px-4 sm:mx-0 sm:px-0 scroll-smooth"
+                      >
                         {featuredProducts.map((p) => (
-                          <div key={p.id} className="min-w-[280px] sm:min-w-[340px] flex-shrink-0 snap-start">
+                          <div key={p.id} className="w-[210px] sm:w-[250px] flex-shrink-0 snap-start">
                             <ProductCard 
                               product={p} 
                               onOpenCheckoutImmediate={handleOpenCheckoutImmediate} 
+                              isCompact={true}
                             />
                           </div>
                         ))}
@@ -408,6 +499,8 @@ function StorefrontContent() {
         isOpen={isCheckoutOpen}
         onClose={handleCloseCheckout}
         immediateProduct={immediateCheckoutProduct}
+        immediateSize={immediateSize}
+        immediateColor={immediateColor}
       />
 
       {/* Order Tracking modal Frame */}

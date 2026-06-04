@@ -3,6 +3,11 @@ export interface Product {
   name: string;
   category: string;
   description?: string;
+  details?: string; // Long rich details list or specifications
+  sizes?: string;   // S, M, L, XL etc.
+  colors?: string;  // Red, Blue, Black etc.
+  showSizes?: boolean;
+  showColors?: boolean;
   price: number;
   stock: number;
   images: string[];
@@ -22,6 +27,8 @@ export interface Category {
 export interface CartItem {
   product: Product;
   quantity: number;
+  size?: string;
+  color?: string;
 }
 
 export interface OrderItem {
@@ -29,6 +36,8 @@ export interface OrderItem {
   name: string;
   price: number;
   quantity: number;
+  size?: string;
+  color?: string;
 }
 
 export interface Order {

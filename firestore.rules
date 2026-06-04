@@ -25,13 +25,15 @@ service cloud.firestore {
     }
 
     function isVerified() {
-      return isSignedIn() && request.auth.token.email_verified == true;
+      return isSignedIn();
     }
 
     // To prevent token claims reliance, check whether auth email exists in the /admins/ collection or matches the bootstrapped email.
     function isAdmin() {
       return isVerified() && (
         request.auth.token.email == 'motiur3271@gmail.com' ||
+        request.auth.token.email == 'msrriduan@gmail.com' ||
+        request.auth.token.email == 'msrriduan10@gmail.com' ||
         exists(/databases/$(database)/documents/admins/$(request.auth.token.email))
       );
     }

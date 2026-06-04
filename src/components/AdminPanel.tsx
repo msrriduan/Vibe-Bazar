@@ -275,7 +275,12 @@ export default function AdminPanel() {
     isCODEnabled: true,
     codAllowedAreas: 'all',
     isFeatured: false,
-    description: ''
+    description: '',
+    details: '',
+    sizes: '',
+    colors: '',
+    showSizes: true,
+    showColors: true
   });
 
   // Categories & Coupon addition
@@ -402,7 +407,12 @@ export default function AdminPanel() {
       isCODEnabled: productForm.isCODEnabled,
       codAllowedAreas: productForm.codAllowedAreas,
       isFeatured: productForm.isFeatured,
-      description: productForm.description
+      description: productForm.description,
+      details: productForm.details,
+      sizes: productForm.sizes,
+      colors: productForm.colors,
+      showSizes: productForm.showSizes,
+      showColors: productForm.showColors
     };
 
     try {
@@ -429,7 +439,12 @@ export default function AdminPanel() {
         isCODEnabled: true,
         codAllowedAreas: 'all',
         isFeatured: false,
-        description: ''
+        description: '',
+        details: '',
+        sizes: '',
+        colors: '',
+        showSizes: true,
+        showColors: true
       });
     } catch (err) {
       alert('Action failed. Verify logs for permissions or schema errors.');
@@ -448,7 +463,12 @@ export default function AdminPanel() {
       isCODEnabled: p.isCODEnabled,
       codAllowedAreas: p.codAllowedAreas,
       isFeatured: p.isFeatured || false,
-      description: p.description || ''
+      description: p.description || '',
+      details: p.details || '',
+      sizes: p.sizes || '',
+      colors: p.colors || '',
+      showSizes: p.showSizes !== false,
+      showColors: p.showColors !== false
     });
     setShowAddProductModal(true);
   };
@@ -829,7 +849,14 @@ export default function AdminPanel() {
                                   {order.items.map((item, i) => (
                                     <div key={i} className="flex justify-between items-center text-[11px] font-medium py-0.5">
                                       <div className="text-zinc-300">
-                                        • {item.name} <span className="text-zinc-500">x{item.quantity}</span>
+                                        • {item.name}{' '}
+                                        {item.size && (
+                                          <span className="text-[9px] bg-brand-pink/25 border border-brand-pink/30 text-zinc-100 font-bold px-1 py-0.5 rounded ml-1">Size: {item.size}</span>
+                                        )}
+                                        {item.color && (
+                                          <span className="text-[9px] bg-brand-orange/25 border border-brand-orange/30 text-zinc-100 font-bold px-1 py-0.5 rounded ml-1">Color: {item.color}</span>
+                                        )}
+                                        <span className="text-zinc-500 ml-1">x{item.quantity}</span>
                                       </div>
                                       <span className="font-mono text-zinc-400">{item.price * item.quantity} BDT</span>
                                     </div>
@@ -1104,26 +1131,32 @@ export default function AdminPanel() {
                       </div>
 
                       {/* Immediate switch state triggers */}
-                      <div className="flex gap-4 items-center pt-2.5 border-t border-zinc-900 text-[10px] font-bold text-zinc-400">
-                        <label className="flex items-center gap-2 select-none cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={prod.isFeatured || false}
-                            onChange={() => handleToggleFeatured(prod)}
-                            className="h-4.5 w-4.5 accent-brand-pink cursor-pointer pointer-events-auto rounded bg-zinc-950 border border-zinc-800"
-                          />
-                          <span>Hot (Featured)</span>
-                        </label>
+                      <div className="flex flex-wrap gap-2.5 items-center pt-3 border-t border-zinc-900/40 text-[10px] font-bold text-zinc-400">
+                        <button
+                          type="button"
+                          onClick={() => handleToggleFeatured(prod)}
+                          className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all pointer-events-auto select-none ${
+                            prod.isFeatured
+                              ? 'bg-gradient-to-r from-brand-orange/20 to-brand-pink/20 border-brand-pink/50 text-white shadow-xs'
+                              : 'bg-zinc-950/60 border-zinc-900 text-zinc-400 hover:text-white hover:border-zinc-805'
+                          }`}
+                        >
+                          <Star className={`h-3.5 w-3.5 ${prod.isFeatured ? 'fill-brand-pink text-brand-pink' : 'text-zinc-500'}`} />
+                          <span>{prod.isFeatured ? 'In Carousel (Click to Remove) 🔥' : 'Add to Hot/Featured Slider'}</span>
+                        </button>
 
-                        <label className="flex items-center gap-2 select-none cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={prod.isCODEnabled}
-                            onChange={() => handleToggleCOD(prod)}
-                            className="h-4.5 w-4.5 accent-emerald-500 cursor-pointer pointer-events-auto rounded bg-zinc-950 border border-zinc-805"
-                          />
+                        <button
+                          type="button"
+                          onClick={() => handleToggleCOD(prod)}
+                          className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all pointer-events-auto select-none ${
+                            prod.isCODEnabled
+                              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                              : 'bg-zinc-950/60 border-zinc-900 text-zinc-400 hover:text-white hover:border-zinc-805'
+                          }`}
+                        >
+                          <div className={`h-1.5 w-1.5 rounded-full ${prod.isCODEnabled ? 'bg-emerald-400 animate-pulse' : 'bg-zinc-500'}`} />
                           <span>Cash On Delivery</span>
-                        </label>
+                        </button>
                       </div>
 
                     </div>
@@ -1791,15 +1824,16 @@ export default function AdminPanel() {
                 </div>
 
                 <div>
-                  <label className="text-zinc-500 font-bold uppercase tracking-widest block mb-1 text-[9px]">Hotlink Galleries (separated with commas) *</label>
+                  <label className="text-zinc-500 font-bold uppercase tracking-widest block mb-1 text-[9px]">Product Image Hotlinks (separated with commas) *</label>
                   <input
                     type="text"
                     required
                     value={productForm.images}
                     onChange={(e) => setProductForm({ ...productForm, images: e.target.value })}
-                    placeholder="https://picsum.photos/400"
+                    placeholder="https://example.com/cover.jpg, https://example.com/extra1.jpg"
                     className="w-full bg-zinc-950 border border-zinc-805 rounded-xl py-2.5 px-3 text-xs font-semibold focus:outline-none focus:border-brand-pink text-white"
                   />
+                  <p className="text-[10px] text-zinc-500 mt-1 font-medium leading-tight">First link is the product's primary picture in catalogs. Comma-separated extra links show in the product details page carousel gallery.</p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 bg-zinc-950 p-2.5 rounded-xl border border-zinc-805 text-[10px] font-bold">
@@ -1844,6 +1878,61 @@ export default function AdminPanel() {
                     value={productForm.description}
                     onChange={(e) => setProductForm({ ...productForm, description: e.target.value })}
                     placeholder="Write specifics, material types..."
+                    className="w-full bg-zinc-950 border border-zinc-805 rounded-xl py-2 px-3 text-xs font-semibold focus:outline-none focus:border-brand-pink text-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-zinc-500 font-bold uppercase tracking-widest block mb-1 text-[9px]">Sizes Available (optional, comma-separated)</label>
+                  <input
+                    type="text"
+                    value={productForm.sizes}
+                    onChange={(e) => setProductForm({ ...productForm, sizes: e.target.value })}
+                    placeholder="e.g. S, M, L, XL, XXL"
+                    className="w-full bg-zinc-950 border border-zinc-805 rounded-xl py-2.5 px-3 text-xs font-semibold focus:outline-none focus:border-brand-pink text-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-zinc-500 font-bold uppercase tracking-widest block mb-1 text-[9px]">Colors Available (optional, comma-separated)</label>
+                  <input
+                    type="text"
+                    value={productForm.colors}
+                    onChange={(e) => setProductForm({ ...productForm, colors: e.target.value })}
+                    placeholder="e.g. Red, Blue, Black, Green"
+                    className="w-full bg-zinc-950 border border-zinc-805 rounded-xl py-2.5 px-3 text-xs font-semibold focus:outline-none focus:border-brand-pink text-white"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 bg-zinc-950 p-2.5 rounded-xl border border-zinc-805 text-[10px] font-bold">
+                  <label className="flex items-center gap-1.5 select-none cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={productForm.showSizes}
+                      onChange={(e) => setProductForm({ ...productForm, showSizes: e.target.checked })}
+                      className="h-4 w-4 text-brand-pink bg-zinc-900 border-zinc-805 rounded pointer-events-auto cursor-pointer"
+                    />
+                    <span>Show Sizes option on Product Page</span>
+                  </label>
+
+                  <label className="flex items-center gap-1.5 select-none cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={productForm.showColors}
+                      onChange={(e) => setProductForm({ ...productForm, showColors: e.target.checked })}
+                      className="h-4 w-4 text-brand-pink bg-zinc-900 border-zinc-805 rounded pointer-events-auto cursor-pointer"
+                    />
+                    <span>Show Colors option on Product Page</span>
+                  </label>
+                </div>
+
+                <div>
+                  <label className="text-zinc-500 font-bold uppercase tracking-widest block mb-1 text-[9px]">Detailed Specs / Rich Bullet Points (optional, comma or line separated)</label>
+                  <textarea
+                    rows={3}
+                    value={productForm.details}
+                    onChange={(e) => setProductForm({ ...productForm, details: e.target.value })}
+                    placeholder="e.g. Fabric: Premium Interlock Cotton, Weight: 260 GSM, Fit: Slouchy Drop Shoulder"
                     className="w-full bg-zinc-950 border border-zinc-805 rounded-xl py-2 px-3 text-xs font-semibold focus:outline-none focus:border-brand-pink text-white"
                   />
                 </div>
