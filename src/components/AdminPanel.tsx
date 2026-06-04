@@ -298,6 +298,12 @@ export default function AdminPanel() {
   // Settings modification
   const [settingsForm, setSettingsForm] = useState<SystemSettings>(settings);
 
+  useEffect(() => {
+    if (settings) {
+      setSettingsForm(settings);
+    }
+  }, [settings]);
+
   // Stats derivations
   const stats = useMemo(() => {
     const today = new Date().toDateString();
@@ -1390,10 +1396,10 @@ export default function AdminPanel() {
                       <input
                         type="text"
                         required
-                        value={settingsForm.paymentNumbers.bKash}
+                        value={settingsForm?.paymentNumbers?.bKash || ''}
                         onChange={(e) => setSettingsForm({
                           ...settingsForm,
-                          paymentNumbers: { ...settingsForm.paymentNumbers, bKash: e.target.value }
+                          paymentNumbers: { ...(settingsForm?.paymentNumbers || { Nagad: '', bKash: '', Rocket: '' }), bKash: e.target.value }
                         })}
                         className="w-full bg-zinc-900 border border-zinc-850 rounded-xl py-3 px-4 text-xs font-semibold font-mono text-white focus:outline-none focus:border-brand-pink"
                       />
@@ -1404,10 +1410,10 @@ export default function AdminPanel() {
                       <input
                         type="text"
                         required
-                        value={settingsForm.paymentNumbers.Nagad}
+                        value={settingsForm?.paymentNumbers?.Nagad || ''}
                         onChange={(e) => setSettingsForm({
                           ...settingsForm,
-                          paymentNumbers: { ...settingsForm.paymentNumbers, Nagad: e.target.value }
+                          paymentNumbers: { ...(settingsForm?.paymentNumbers || { Nagad: '', bKash: '', Rocket: '' }), Nagad: e.target.value }
                         })}
                         className="w-full bg-zinc-900 border border-zinc-850 rounded-xl py-3 px-4 text-xs font-semibold font-mono text-white focus:outline-none focus:border-brand-pink"
                       />
@@ -1417,10 +1423,10 @@ export default function AdminPanel() {
                       <label className="text-zinc-500 font-bold block mb-1 font-mono uppercase tracking-widest text-[9px]">Rocket Number</label>
                       <input
                         type="text"
-                        value={settingsForm.paymentNumbers.Rocket || ''}
+                        value={settingsForm?.paymentNumbers?.Rocket || ''}
                         onChange={(e) => setSettingsForm({
                           ...settingsForm,
-                          paymentNumbers: { ...settingsForm.paymentNumbers, Rocket: e.target.value }
+                          paymentNumbers: { ...(settingsForm?.paymentNumbers || { Nagad: '', bKash: '', Rocket: '' }), Rocket: e.target.value }
                         })}
                         className="w-full bg-zinc-900 border border-zinc-850 rounded-xl py-3 px-4 text-xs font-semibold font-mono text-white focus:outline-none focus:border-brand-pink"
                       />
@@ -1441,7 +1447,7 @@ export default function AdminPanel() {
                       <input
                         type="text"
                         required
-                        value={settingsForm.whatsappNumber}
+                        value={settingsForm?.whatsappNumber || ''}
                         onChange={(e) => setSettingsForm({ ...settingsForm, whatsappNumber: e.target.value })}
                         className="w-full bg-zinc-900 border border-zinc-850 rounded-xl py-3 px-4 text-xs font-semibold font-mono text-white focus:outline-none focus:border-brand-pink"
                       />
